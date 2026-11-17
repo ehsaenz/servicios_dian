@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>FacturacionColombia_Metadatos</AssemblyName>
+    <RootNamespace>FacturacionColombia_Metadatos</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BasicLibraryExt" Version="1.0.10" />
+  </ItemGroup>
+
+</Project>

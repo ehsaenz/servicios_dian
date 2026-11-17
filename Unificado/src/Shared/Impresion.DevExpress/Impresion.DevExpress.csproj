@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Renderizador de la representación gráfica (PDF) con DevExpress Reporting 24.1 y el motor Skia (Windows y Linux).
+       NO forma parte de DIAN.Unificado.sln: necesita DevExpress 24.1 instalado para compilar
+       (misma convención que QuantyERP.Reportes.DevExpress). -->
+  <PropertyGroup>
+    <RootNamespace>DIAN.Impresion.DevExpress</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DevExpress24_1Dir Condition="'$(DevExpress24_1Dir)' == ''">$(ProgramFiles)\DevExpress 24.1</DevExpress24_1Dir>
+    <DevExpressBinPath Condition="'$(DevExpressBinPath)' == ''">$(DevExpress24_1Dir)\Components\Bin\NetCore</DevExpressBinPath>
+    <NoWarn>$(NoWarn);CA1416;NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Impresion\Impresion.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="7.3.0.3" />
+    <PackageReference Include="System.CodeDom" Version="4.4.0" />
+    <PackageReference Include="System.Drawing.Common" Version="4.7.2" />
+    <PackageReference Include="System.Security.Permissions" Version="4.7.0" />
+  </ItemGroup>
+
+  <!-- DevExpress carga estos dos ensamblados por reflexión (no son dependencia de compilación de nadie), así que no
+       llegan solos al proyecto que usa esta biblioteca. Como None con copia a la salida sí viajan con la referencia. -->
+  <ItemGroup>
+    <None Include="$(DevExpressBinPath)\DevExpress.Drawing.v24.1.Skia.dll" Link="DevExpress.Drawing.v24.1.Skia.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(DevExpressBinPath)\DevExpress.Pdf.v24.1.SkiaRenderer.dll" Link="DevExpress.Pdf.v24.1.SkiaRenderer.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.Data.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.DataAccess.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.DataAccess.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Drawing.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.Drawing.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Drawing.v24.1.Skia"><HintPath>$(DevExpressBinPath)\DevExpress.Drawing.v24.1.Skia.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Pdf.v24.1.Core"><HintPath>$(DevExpressBinPath)\DevExpress.Pdf.v24.1.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Pdf.v24.1.Drawing"><HintPath>$(DevExpressBinPath)\DevExpress.Pdf.v24.1.Drawing.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Pdf.v24.1.SkiaRenderer"><HintPath>$(DevExpressBinPath)\DevExpress.Pdf.v24.1.SkiaRenderer.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Printing.v24.1.Core"><HintPath>$(DevExpressBinPath)\DevExpress.Printing.v24.1.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.XtraReports.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.XtraReports.v24.1.dll</HintPath></Reference>
+  </ItemGroup>
+
+</Project>

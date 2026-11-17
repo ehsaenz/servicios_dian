@@ -1,0 +1,20 @@
+@page
+@model CuentaModel
+@{
+    ViewData["Title"] = "Mi cuenta";
+}
+
+<h1>Mi cuenta <span class="suave">· @User.Identity!.Name</span></h1>
+
+@if (Model.Mensaje != null) { <div class="msg ok">@Model.Mensaje</div> }
+@if (Model.Error != null) { <div class="msg error">@Model.Error</div> }
+
+<section>
+    <h2>Cambiar contraseña</h2>
+    <form method="post">
+        <label>Contraseña actual</label><input type="password" name="actual" autocomplete="current-password" required />
+        <label>Contraseña nueva (mínimo @AdminUsuarios.ClaveMinima caracteres)</label><input type="password" name="nueva" autocomplete="new-password" required />
+        <label>Repetir la contraseña nueva</label><input type="password" name="repetir" autocomplete="new-password" required />
+        <button>Cambiar contraseña</button>
+    </form>
+</section>

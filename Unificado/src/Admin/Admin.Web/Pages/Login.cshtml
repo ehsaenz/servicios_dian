@@ -1,0 +1,15 @@
+@page
+@model LoginModel
+@{ ViewData["Title"] = "Ingreso"; }
+
+<section style="max-width:380px;margin:40px auto">
+    <h1>Ingreso</h1>
+    @if (Model.Error != null) { <div class="msg error">@Model.Error</div> }
+    <form method="post">
+        <label for="usuario">Usuario</label>
+        <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus />
+        <label for="clave">Contraseña</label>
+        <input type="password" id="clave" name="clave" autocomplete="current-password" required />
+        <button>Entrar</button>
+    </form>
+</section>

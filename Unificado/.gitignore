@@ -1,0 +1,31 @@
+# Compilación
+bin/
+obj/
+TestResults/
+*.user
+.vs/
+
+# Secretos y datos de los clientes: NUNCA al repositorio
+config-local/
+*.p12
+*.pfx
+*.pem
+*.key
+MtxSoftware.xml
+almacen/
+llaves/
+datos/
+cache/
+
+# Paquetes generados
+dist/
+
+# Material de referencia de la DIAN (anexos técnicos y cajas de herramientas, ~58 MB): se descarga de la DIAN, no se versiona.
+# Las cajas de herramientas y anexos de la DIAN (PDF, ZIP) no se versionan; la documentación propia (docs/README.md y las
+# cuatro carpetas de guías) sí.
+docs/*
+!docs/README.md
+!docs/desarrollo/
+!docs/despliegue/
+!docs/integracion/
+!docs/mantenimiento/

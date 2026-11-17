@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Habilitacion.Pruebas</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\Metadatos\Metadatos.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Tipos\Tipos.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Util\Util.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Firma\Firma.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Documentos\Documentos.csproj" />
+    <ProjectReference Include="..\..\src\Shared\ServiciosWeb\ServiciosWeb.csproj" />
+    <ProjectReference Include="..\..\src\Shared\ModeloDian\ModeloDian.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Traductor\Traductor.csproj" />
+  </ItemGroup>
+
+</Project>

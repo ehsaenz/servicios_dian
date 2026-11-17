@@ -1,0 +1,98 @@
+	[
+		{
+			"Codigo": "01",
+			"Nombre": "IVA",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "02",
+			"Nombre": "IC",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "03",
+			"Nombre": "ICA",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "04",
+			"Nombre": "INC",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "05",
+			"Nombre": "ReteIVA",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "RESTA"
+		},
+		{
+			"Codigo": "06",
+			"Nombre": "ReteFuente",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "RESTA"
+		},
+		{
+			"Codigo": "07",
+			"Nombre": "ReteICA",
+			"TipoCalculo": "MILESIMAL",
+			"TipoOperacion": "RESTA"
+		},
+		{
+			"Codigo": "08",
+			"Nombre": "ReteCREE",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "RESTA"
+		},
+		{
+			"Codigo": "20",
+			"Nombre": "FtoHorticultura",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "21",
+			"Nombre": "Timbre",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "22",
+			"Nombre": "Bolsas",
+			"TipoCalculo": "NOMINAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "23",
+			"Nombre": "INCarbono",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "24",
+			"Nombre": "INCombustibles",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "25",
+			"Nombre": "Sobretasa Combustibles",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "26",
+			"Nombre": "Sordicom",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		},
+		{
+			"Codigo": "ZZ",
+			"Nombre": "Nombre de la figura tributaria",
+			"TipoCalculo": "PORCENTUAL",
+			"TipoOperacion": "SUMA"
+		}
+	]

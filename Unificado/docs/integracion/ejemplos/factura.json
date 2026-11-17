@@ -1,0 +1,91 @@
+{
+  "TipoDocDian": "01",
+  "TipoDocErp": "FV",
+  "Numero": "SETP990001001",
+  "FechaHoraDoc": "2026-11-16T10:00:00",
+  "FormaPago": {
+    "ID": "Contado",
+    "CodigoMedioPago": "10",
+    "IdenficadorPago": "",
+    "Plazo": 0
+  },
+  "Resolucion": {
+    "NumeroResolucion": "18760000001",
+    "Prefijo": "SETP",
+    "Desde": 990000000,
+    "Hasta": 995000000,
+    "FechaExpedicion": "2019-01-19T00:00:00",
+    "FechaVencimiento": "2030-01-19T00:00:00",
+    "ClaveTecnica": "<CLAVE_TECNICA_DE_LA_RESOLUCION>"
+  },
+  "Emisor": {
+    "TipoPersona": "JURIDICA",
+    "TipoIdDian": "31",
+    "Codigo": "EMP1",
+    "MatriculaMercantil": "00001",
+    "NIT": "900999999",
+    "DV": "7",
+    "RazonSocial": "EMPRESA DE EJEMPLO S.A.S.",
+    "NombreComercial": "EMPRESA DE EJEMPLO S.A.S.",
+    "NombreContacto": "Contacto Ejemplo",
+    "EmailContacto": "facturacion@empresa-ejemplo.example",
+    "TelefonoContacto": "6020000000",
+    "LocacionPrincipal": { "Direccion": "CALLE 1 # 2-34", "CodigoMunicipio": "76001" },
+    "LocacionComercial": { "Direccion": "CALLE 1 # 2-34", "CodigoMunicipio": "76001" },
+    "responsabilidades_fiscales": [
+      { "Codigo": "O-13", "CodigoFE": "O-13", "Descripcion": "Gran contribuyente" },
+      { "Codigo": "48", "CodigoFE": "", "Descripcion": "Responsable de IVA" }
+    ]
+  },
+  "Receptor": {
+    "TipoPersona": "JURIDICA",
+    "TipoIdDian": "31",
+    "Codigo": "CLI1",
+    "MatriculaMercantil": "00000",
+    "NIT": "900888888",
+    "DV": "3",
+    "RazonSocial": "ADQUIRIENTE DE EJEMPLO S.A.S.",
+    "NombreComercial": "ADQUIRIENTE DE EJEMPLO S.A.S.",
+    "EmailContacto": "compras@adquiriente-ejemplo.example",
+    "TelefonoContacto": "3100000000",
+    "LocacionPrincipal": { "Direccion": "CARRERA 9 # 99-07", "CodigoMunicipio": "11001" },
+    "LocacionComercial": { "Direccion": "CARRERA 9 # 99-07", "CodigoMunicipio": "11001" },
+    "responsabilidades_fiscales": [
+      { "Codigo": "O-13", "CodigoFE": "O-13", "Descripcion": "Gran contribuyente" },
+      { "Codigo": "48", "CodigoFE": "", "Descripcion": "Responsable de IVA" }
+    ]
+  },
+  "Items": [
+    {
+      "ID": 1,
+      "Codigo": "A001",
+      "Referencia": "REF-001",
+      "Detalle": "Camiseta de prueba",
+      "Cant": 2,
+      "ValorUnit": 50000,
+      "Excluido": false,
+      "TarifaIVA": 0.19,
+      "DtoDir": 0,
+      "impuestos": [
+        { "ID": "01", "Nombre": "IVA", "Porcentaje": 0.19, "ValorBase": 100000, "Operacion": "SUMA", "Calculo": "PORCENTUAL" }
+      ],
+      "retenciones": []
+    },
+    {
+      "ID": 2,
+      "Codigo": "A002",
+      "Referencia": "REF-002",
+      "Detalle": "Pantalón de prueba",
+      "Cant": 1,
+      "ValorUnit": 120000,
+      "Excluido": false,
+      "TarifaIVA": 0.19,
+      "DtoDir": 0.10,
+      "impuestos": [
+        { "ID": "01", "Nombre": "IVA", "Porcentaje": 0.19, "ValorBase": 108000, "Operacion": "SUMA", "Calculo": "PORCENTUAL" }
+      ],
+      "retenciones": []
+    }
+  ],
+  "Notas": [ "Factura de ejemplo. Datos ficticios." ]
+}

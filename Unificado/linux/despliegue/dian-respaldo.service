@@ -1,0 +1,8 @@
+[Unit]
+Description=DIAN - Respaldo cifrado de datos
+ConditionPathExists=/etc/dian/respaldo.crt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dian-respaldo ejecutar
+SyslogIdentifier=dian-respaldo

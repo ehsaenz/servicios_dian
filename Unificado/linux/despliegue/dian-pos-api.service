@@ -1,0 +1,35 @@
+[Unit]
+Description=DIAN - API multiempresa (POS y documento soporte)
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dian
+Group=dian
+WorkingDirectory=/opt/dian/pos-api
+ExecStart=/opt/dian/pos-api/Pos.Api
+EnvironmentFile=/etc/dian/dian.env
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5290
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=dian-pos-api
+
+# Aislamiento: sin privilegios, sin escribir fuera de /var/lib/dian, sin ver /home.
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dian
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

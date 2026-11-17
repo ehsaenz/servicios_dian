@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>DIAN.Tenants</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="EsquemaMySql.sql" LogicalName="DIAN.Tenants.EsquemaMySql.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MySql.Data" Version="8.2.0" />
+    <!-- MySql.Data 8.2.0 trae versiones con vulnerabilidades conocidas de estos dos paquetes; se fijan las corregidas. -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <!-- Versiones sin las vulnerabilidades conocidas de 10.0.0 (ver fase1-resumen-cierre.md). -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.14" />
+  </ItemGroup>
+
+</Project>

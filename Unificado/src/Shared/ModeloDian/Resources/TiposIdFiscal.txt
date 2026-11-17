@@ -1,0 +1,42 @@
+	[
+		{
+			"Codigo": "11",
+			"Nombre": "Registro civil"
+		},
+		{
+			"Codigo": "12",
+			"Nombre": "Tarjeta de identidad"
+		},
+		{
+			"Codigo": "13",
+			"Nombre": "Cédula de ciudadanía"
+		},
+		{
+			"Codigo": "21",
+			"Nombre": "Tarjeta de extranjería"
+		},
+		{
+			"Codigo": "22",
+			"Nombre": "Cédula de extranjería"
+		},
+		{
+			"Codigo": "31",
+			"Nombre": "NIT"
+		},
+		{
+			"Codigo": "41",
+			"Nombre": "Pasaporte"
+		},
+		{
+			"Codigo": "42",
+			"Nombre": "Documento de identificación extranjero"
+		},
+		{
+			"Codigo": "50",
+			"Nombre": "NIT de otro país"
+		},
+		{
+			"Codigo": "91",
+			"Nombre": "NUIP *"
+		}
+	]

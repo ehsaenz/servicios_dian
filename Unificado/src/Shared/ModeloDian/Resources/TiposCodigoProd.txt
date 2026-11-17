@@ -1,0 +1,26 @@
+	[
+		{
+			"SchemeID": "001",
+			"SchemeName": "UNSPSC"
+			"schemeAgencyID": "10"
+			"Uso": "Colombia compra eficiente"
+		},
+		{
+			"SchemeID": "010",
+			"SchemeName": "GTIN"
+			"SchemeAgencyID": "9"
+			"Uso": "Números Globales de Identificación de Productos"
+		},
+		{
+			"SchemeID": "020",
+			"SchemeName": "SubPartida Arancelarias"
+			"schemeAgencyID": "195"
+			"Uso": "SubPartida Arancelarias"
+		},
+		{
+			"SchemeID": "999",
+			"SchemeName": "Estándar de adopción del contribuyente"
+			"schemeAgencyID": ""
+			"Uso": "Estándar de adopción del contribuyente"
+		},
+	]

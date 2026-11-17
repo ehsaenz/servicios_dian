@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Prueba de la cadena completa en Linux y Windows: contenedor XML aprobado, modelo de impresión y PDF con DevExpress.
+       NO forma parte de DIAN.Unificado.sln: necesita DevExpress 24.1 instalado para compilar.
+       Se publica con dotnet publish para el runtime linux-x64 autocontenido. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CA1416;NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Shared\Impresion.DevExpress\Impresion.DevExpress.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\reportes\fuentes\*.ttf" Link="fuentes\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

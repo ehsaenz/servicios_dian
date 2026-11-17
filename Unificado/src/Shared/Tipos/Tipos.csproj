@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>eFacturacionColombia_NETCore.Tipos</AssemblyName>
+    <RootNamespace>eFacturacionColombia_NETCore.Tipos</RootNamespace>
+    <Authors>Miguel Huertas &lt;contacto@miguel-huertas.net&gt;</Authors>
+    <Version>3.0.0</Version>
+    <Copyright>Copyright © 2021</Copyright>
+  </PropertyGroup>
+
+</Project>

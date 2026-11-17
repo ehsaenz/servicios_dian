@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Herramienta de diseño de reportes: NO forma parte de DIAN.Unificado.sln porque necesita DevExpress 24.1 instalado
+       (misma convención que QuantyERP.Reportes.DevExpress). Se ejecuta con: dotnet run en tools/Reportes/GeneradorReportes -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DevExpress24_1Dir Condition="'$(DevExpress24_1Dir)' == ''">$(ProgramFiles)\DevExpress 24.1</DevExpress24_1Dir>
+    <DevExpressBinPath Condition="'$(DevExpressBinPath)' == ''">$(DevExpress24_1Dir)\Components\Bin\NetCore</DevExpressBinPath>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CodeDom" Version="4.4.0" />
+    <PackageReference Include="System.Drawing.Common" Version="4.7.2" />
+    <PackageReference Include="System.Security.Permissions" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.Data.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.DataAccess.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.DataAccess.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Drawing.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.Drawing.v24.1.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Pdf.v24.1.Core"><HintPath>$(DevExpressBinPath)\DevExpress.Pdf.v24.1.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Pdf.v24.1.Drawing"><HintPath>$(DevExpressBinPath)\DevExpress.Pdf.v24.1.Drawing.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Printing.v24.1.Core"><HintPath>$(DevExpressBinPath)\DevExpress.Printing.v24.1.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.XtraReports.v24.1"><HintPath>$(DevExpressBinPath)\DevExpress.XtraReports.v24.1.dll</HintPath></Reference>
+  </ItemGroup>
+
+</Project>

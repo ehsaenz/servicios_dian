@@ -1,0 +1,8 @@
+[Unit]
+Description=DIAN - Vigilancia y renovación del certificado TLS
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dian-tls renovar
+SyslogIdentifier=dian-tls

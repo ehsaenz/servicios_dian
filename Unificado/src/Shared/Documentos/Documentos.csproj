@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>eFacturacionColombia_NETCore.Documentos</AssemblyName>
+    <RootNamespace>eFacturacionColombia_NETCore.Documentos</RootNamespace>
+    <Authors>Miguel Huertas &lt;contacto@miguel-huertas.net&gt;</Authors>
+    <Version>3.0.0</Version>
+    <Copyright>Copyright © 2021</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tipos\Tipos.csproj" />
+    <ProjectReference Include="..\Util\Util.csproj" />
+    <ProjectReference Include="..\Metadatos\Metadatos.csproj" />
+  </ItemGroup>
+
+</Project>

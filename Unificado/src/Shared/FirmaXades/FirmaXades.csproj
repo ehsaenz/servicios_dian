@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Authors>Dpto. de Nuevas Tecnologías de la Concejalía de Urbanismo de Cartagena</Authors>
+    <Company>Dpto. de Nuevas Tecnologías de la Concejalía de Urbanismo de Cartagena</Company>
+    <Copyright>Copyright ©  2015</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Xades\Microsoft.Xades.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Código portado de las bibliotecas anteriores (firma, certificados, HTTP): las APIs marcadas obsoletas se mantienen porque la firma está validada con la DIAN y cambiarlas arriesga el resultado. -->
+    <NoWarn>$(NoWarn);SYSLIB0014;SYSLIB0021;SYSLIB0028;SYSLIB0057;CS0618</NoWarn>
+  </PropertyGroup>
+
+</Project>

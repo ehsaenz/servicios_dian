@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>eFacturacionColombia_NETCore.ServiciosWeb</AssemblyName>
+    <RootNamespace>eFacturacionColombia_NETCore.ServiciosWeb</RootNamespace>
+    <Authors>Miguel Huertas &lt;contacto@miguel-huertas.net&gt;</Authors>
+    <Version>3.0.0</Version>
+    <Copyright>Copyright © 2021</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Util\Util.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      La DIAN exige la suite de seguridad Basic256Sha256Rsa15 (transporte de clave con RSA 1.5), que el paquete
+      oficial System.ServiceModel no incluye. Se usa el WCF cliente compilado desde la copia modificada de
+      dotnet/wcf (PosDocumentoSoporte\...\WCF\wcf), igual que la copia original de la biblioteca.
+      Ver docs\fase1-bitacora-migracion.md.
+    -->
+    <Reference Include="System.Private.ServiceModel">
+      <HintPath>..\..\..\libs\WCF\System.Private.ServiceModel.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Código portado de las bibliotecas anteriores (firma, certificados, HTTP): las APIs marcadas obsoletas se mantienen porque la firma está validada con la DIAN y cambiarlas arriesga el resultado. -->
+    <NoWarn>$(NoWarn);SYSLIB0057</NoWarn>
+  </PropertyGroup>
+
+</Project>

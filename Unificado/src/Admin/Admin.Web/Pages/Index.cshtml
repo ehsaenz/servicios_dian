@@ -1,0 +1,54 @@
+@page
+@model IndexModel
+@{ ViewData["Title"] = "Clientes"; }
+
+<h1>Clientes</h1>
+
+@if (Model.Error != null) { <div class="msg error">@Model.Error</div> }
+
+<section>
+    @if (Model.Clientes.Count == 0)
+    {
+        <p class="suave">Todavía no hay clientes. Cree el primero abajo.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Cliente</th><th>NIT</th><th>Estado</th><th>Certificado</th><th>Claves</th></tr></thead>
+            <tbody>
+            @foreach (var c in Model.Clientes)
+            {
+                <tr>
+                    <td><a asp-page="/Cliente" asp-route-id="@c.Id"><strong>@c.Id</strong></a><br /><span class="suave">@c.Emisor.RazonSocial</span></td>
+                    <td>@c.Emisor.Nit-@c.Emisor.DV</td>
+                    <td>
+                        @if (!c.Activo) { <span class="etq error">Desactivado</span> }
+                        else if (c.PermiteProduccion) { <span class="etq aviso">Producción autorizada</span> }
+                        else { <span class="etq ok">Habilitación</span> }
+                    </td>
+                    <td>
+                        @if (c.CertificadoVenceUtc == null) { <span class="aviso">Falta</span> }
+                        else if (c.CertificadoVenceUtc < DateTime.UtcNow.AddDays(30)) { <span class="error">Vence @c.CertificadoVenceUtc.Value.ToString("yyyy-MM-dd")</span> }
+                        else { <span class="suave">Vence @c.CertificadoVenceUtc.Value.ToString("yyyy-MM-dd")</span> }
+                    </td>
+                    <td>@c.Claves.Count(k => k.Activa) activa(s)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section>
+    <h2>Nuevo cliente</h2>
+    <form method="post" asp-page-handler="Crear">
+        <div class="fila">
+            <div><label for="id">Id (letras, números, guion)</label><input type="text" id="id" name="id" required maxlength="40" /></div>
+            <div><label for="nit">NIT (sin dígito de verificación)</label><input type="text" id="nit" name="nit" required inputmode="numeric" /></div>
+            <div><label for="dv">Dígito de verificación</label><input type="text" id="dv" name="dv" maxlength="1" /></div>
+        </div>
+        <label for="razon">Razón social</label>
+        <input type="text" id="razon" name="razon" required />
+        <button>Crear y configurar</button>
+    </form>
+</section>

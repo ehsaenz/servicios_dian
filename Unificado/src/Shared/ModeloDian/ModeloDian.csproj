@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modelo del documento electrónico del ERP (DocumentoDian) y su constructor, copiados tal cual de
+       FacturacionElectronica\01_FE_V2_Models y 05_FE_V2_HttpClientLib. Se conservan los espacios de nombres y el nombre del
+       ensamblado: el JSON que envía QuantyERP es la serialización de estas clases y debe seguir siendo el mismo contrato.
+       Los proyectos originales no se tocan. -->
+  <PropertyGroup>
+    <AssemblyName>DianModelDoc</AssemblyName>
+    <RootNamespace>DianModelDoc</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);SYSLIB0060;SYSLIB0022;CS0618;CS0612;CS0168;CS0219;CS0162;CS0649;CS0169;CS0414;CS8981</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.txt" />
+    <PackageReference Include="BasicLibraryExt" Version="1.0.15" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>DIAN.Pos.Api</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Tenants\Tenants.csproj" />
+    <ProjectReference Include="..\Pos.Servicios\Pos.Servicios.csproj" />
+    <ProjectReference Include="..\..\Nomina\Nomina.Servicios\Nomina.Servicios.csproj" />
+  </ItemGroup>
+
+</Project>

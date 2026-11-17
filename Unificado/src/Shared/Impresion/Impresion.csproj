@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modelo de impresión de los documentos electrónicos y lector del XML aprobado por la DIAN.
+       Sin dependencias (ni DevExpress): el renderizador de PDF es otro proyecto. -->
+  <PropertyGroup>
+    <RootNamespace>DIAN.Impresion</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

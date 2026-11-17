@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>eFacturacionColombia_NETCore.Firma</AssemblyName>
+    <RootNamespace>eFacturacionColombia_NETCore.Firma</RootNamespace>
+    <Authors>Miguel Huertas &lt;contacto@miguel-huertas.net&gt;</Authors>
+    <Version>3.0.0</Version>
+    <Copyright>Copyright © 2021</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FirmaXades\FirmaXades.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Código portado de las bibliotecas anteriores (firma, certificados, HTTP): las APIs marcadas obsoletas se mantienen porque la firma está validada con la DIAN y cambiarlas arriesga el resultado. -->
+    <NoWarn>$(NoWarn);SYSLIB0057</NoWarn>
+  </PropertyGroup>
+
+</Project>

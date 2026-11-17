@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modelo del cuerpo que envía el ERP para la nómina electrónica (portado de MetaDatosNE y EnumsNE, sin cambiar los
+       espacios de nombres NominaElectronica.MetaDatos y NominaElectronica.Enums, para que el JSON sea el mismo). -->
+  <PropertyGroup>
+    <AssemblyName>MetaDatosNE</AssemblyName>
+    <RootNamespace>NominaElectronica.MetaDatos</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BasicLibraryExt" Version="1.0.10" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Código portado de las bibliotecas anteriores (firma, certificados, HTTP): las APIs marcadas obsoletas se mantienen porque la firma está validada con la DIAN y cambiarlas arriesga el resultado. -->
+    <NoWarn>$(NoWarn);SYSLIB0014;CS0618;CS0612;CS8981</NoWarn>
+  </PropertyGroup>
+
+
+  <!-- Secretos externos comunes: nunca incrustar valores en el ensamblado. -->
+  <ItemGroup>
+    <Compile Include="..\..\Shared\ModeloDian\Servicios\SecretosLocales.cs" Link="Configuracion\SecretosLocales.cs" />
+  </ItemGroup>
+</Project>

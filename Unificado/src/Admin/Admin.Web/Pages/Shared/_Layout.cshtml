@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "Administración") · DIAN Admin</title>
+    <style>
+        :root { --fondo: #f6f7f9; --tarjeta: #fff; --texto: #1d2733; --suave: #5b6776; --linea: #dde2e8; --acento: #1f5fbf; --ok: #1b7a3a; --aviso: #a86400; --error: #b3261e; }
+        @@media (prefers-color-scheme: dark) { :root { --fondo: #14181d; --tarjeta: #1d232b; --texto: #e6eaee; --suave: #9aa6b4; --linea: #303a46; --acento: #6aa3ff; --ok: #5fcf85; --aviso: #f0b34a; --error: #ff8a80; } }
+        * { box-sizing: border-box; }
+        body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--texto); }
+        header { background: var(--tarjeta); border-bottom: 1px solid var(--linea); padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+        header a { color: var(--texto); text-decoration: none; font-weight: 600; }
+        header .sp { flex: 1; }
+        main { max-width: 960px; margin: 0 auto; padding: 16px; }
+        h1 { font-size: 22px; margin: 8px 0 16px; } h2 { font-size: 17px; margin: 0 0 12px; }
+        section { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        label { display: block; font-size: 13px; color: var(--suave); margin: 10px 0 3px; }
+        input[type=text], input[type=password], input[type=email], input[type=file], select { width: 100%; padding: 8px; border: 1px solid var(--linea); border-radius: 6px; background: var(--fondo); color: var(--texto); font: inherit; }
+        .fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 14px; }
+        button { margin-top: 12px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--acento); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+        button.sec { background: transparent; color: var(--acento); border: 1px solid var(--acento); }
+        button.peligro { background: var(--error); }
+        table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+        th { font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+        .ok { color: var(--ok); } .aviso { color: var(--aviso); } .error { color: var(--error); } .suave { color: var(--suave); font-size: 13px; }
+        .msg { padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; border: 1px solid var(--linea); background: var(--tarjeta); }
+        .msg.error { border-color: var(--error); } .msg.ok { border-color: var(--ok); }
+        code, .clave { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+        .clave { display: block; padding: 10px; background: var(--fondo); border: 1px dashed var(--aviso); border-radius: 6px; margin: 8px 0; }
+        img.logo { max-height: 70px; max-width: 220px; display: block; margin-bottom: 8px; }
+        .etq { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--linea); }
+        @@media (max-width: 600px) { main { padding: 10px; } }
+    </style>
+</head>
+<body>
+    <header>
+        <a asp-page="/Index">DIAN · Administración de clientes</a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            @if (User.IsInRole(DIAN.Admin.Web.Roles.Operador)) { <a asp-page="/Auditoria" class="suave">Auditoría</a> }
+            <span class="sp"></span>
+            <a asp-page="/Cuenta" class="suave">Mi cuenta · @User.Identity!.Name</a>
+            <form method="post" asp-page="/Logout" style="margin:0"><button class="sec" style="margin:0">Salir</button></form>
+        }
+    </header>
+    <main>@RenderBody()</main>
+</body>
+</html>

@@ -1,0 +1,331 @@
+@page "{id}"
+@model ClienteModel
+@{
+    ViewData["Title"] = Model.Cliente.Id;
+    var c = Model.Cliente;
+}
+
+@if (Model.EsOperador) { <p class="suave"><a asp-page="/Index">← Clientes</a></p> }
+<h1>@c.Id <span class="suave">· @c.Emisor.RazonSocial</span></h1>
+
+@if (Model.Mensaje != null) { <div class="msg ok">@Model.Mensaje</div> }
+@if (Model.Error != null) { <div class="msg error">@Model.Error</div> }
+@if (Model.ClaveNueva != null)
+{
+    <div class="msg">
+        <strong>Clave de API nueva</strong> — entréguela al cliente por un canal seguro. Es la última vez que se muestra.
+        <span class="clave">@Model.ClaveNueva</span>
+        <span class="suave">El ERP la envía en la cabecera <code>x-api-key</code>.</span>
+    </div>
+}
+
+@if (Model.ClaveUsuarioNueva != null)
+{
+    <div class="msg">
+        <strong>Contraseña de @Model.UsuarioNuevo</strong> — entréguela por un canal seguro. Es la última vez que se muestra.
+        <span class="clave">@Model.ClaveUsuarioNueva</span>
+        <span class="suave">Puede cambiarla en «Mi cuenta» después de ingresar.</span>
+    </div>
+}
+
+@if (!Model.EsOperador)
+{
+    <section>
+        <h2>Estado</h2>
+        <p>
+            @if (!c.Activo) { <span class="etq error">Desactivado</span> }
+            else if (c.PermiteProduccion) { <span class="etq aviso">Producción</span> }
+            else { <span class="etq ok">Habilitación (pruebas)</span> }
+            @if (c.ArchivoCertificado != null) { <span class="suave"> · Certificado vigente hasta @c.CertificadoVenceUtc?.ToString("yyyy-MM-dd")</span> }
+        </p>
+        <p class="suave">Los datos del emisor, el software, el certificado y el paso a producción los administra SISTEMAS 360.</p>
+    </section>
+}
+else
+{
+<section>
+    <h2>Estado</h2>
+    <p>
+        @if (!c.Activo) { <span class="etq error">Desactivado</span> }
+        else if (c.PermiteProduccion) { <span class="etq aviso">Producción autorizada</span> }
+        else { <span class="etq ok">Habilitación (los envíos van a la DIAN de pruebas)</span> }
+    </p>
+    <form method="post" asp-page-handler="Estado" style="display:inline">
+        <input type="hidden" name="activo" value="@((!c.Activo).ToString().ToLowerInvariant())" />
+        <button class="sec">@(c.Activo ? "Desactivar cliente" : "Activar cliente")</button>
+    </form>
+
+    <h2 style="margin-top:20px">Camino a producción</h2>
+    <table>
+        <tbody>
+        @foreach (var item in Model.Lista)
+        {
+            <tr>
+                <td style="width:28px">
+                    @if (item.Resultado == ResultadoItem.Cumplido) { <span class="ok" title="Cumplido">✔</span> }
+                    else if (item.Resultado == ResultadoItem.Aviso) { <span class="aviso" title="Conviene resolverlo">▲</span> }
+                    else { <span class="error" title="Pendiente">✖</span> }
+                </td>
+                <td><strong>@item.Titulo</strong><div class="suave">@item.Detalle</div></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="suave">✖ impide autorizar producción · ▲ no la impide, pero conviene resolverlo. Orden habitual: emisor, certificado, software de habilitación, set de pruebas aprobado, y al final el software de producción y la autorización.</p>
+
+    <h2 style="margin-top:20px">Producción</h2>
+    @if (c.PermiteProduccion)
+    {
+        <p class="aviso">Este cliente puede enviar documentos reales a la DIAN (los software marcados como "producción").</p>
+        <form method="post" asp-page-handler="Produccion">
+            <input type="hidden" name="permitir" value="false" />
+            <button class="peligro">Retirar autorización de producción</button>
+        </form>
+    }
+    else
+    {
+        <p class="suave">Mientras no se autorice, todo envío va a habilitación aunque el software esté marcado como producción. Autorice solo con la confirmación expresa del cliente.</p>
+        <form method="post" asp-page-handler="Produccion">
+            <input type="hidden" name="permitir" value="true" />
+            <label for="confirmacion">Escriba <code>@ClienteAdminServicio.TextoAutorizacionProduccion</code> para confirmar</label>
+            <input type="text" id="confirmacion" name="confirmacion" autocomplete="off" />
+            @if (Model.Impedimentos != null) { <p class="aviso">@Model.Impedimentos</p> }
+            <button class="peligro" disabled="@(Model.Impedimentos != null)">Autorizar producción</button>
+        </form>
+    }
+</section>
+
+<section>
+    <h2>Emisor</h2>
+    <form method="post" asp-page-handler="Emisor">
+        <div class="fila">
+            <div><label>NIT</label><input type="text" name="nit" value="@c.Emisor.Nit" required inputmode="numeric" /></div>
+            <div><label>DV</label><input type="text" name="dv" value="@c.Emisor.DV" maxlength="1" /></div>
+            <div><label>Matrícula mercantil</label><input type="text" name="matricula" value="@c.Emisor.MatriculaMercantil" /></div>
+        </div>
+        <label>Razón social</label><input type="text" name="razon" value="@c.Emisor.RazonSocial" required />
+        <div class="fila">
+            <div><label>Correo</label><input type="email" name="email" value="@c.Emisor.Email" /></div>
+            <div><label>Teléfono</label><input type="text" name="telefono" value="@c.Emisor.NumeroTel" /></div>
+            <div><label>Perfil de correo</label><input type="text" name="perfilCorreo" value="@c.PerfilCorreo" /></div>
+        </div>
+        <button>Guardar emisor</button>
+    </form>
+</section>
+
+@foreach (var (tipo, titulo) in new[] { (TipoSoftware.FacturacionElectronica, "Software · Facturación electrónica (factura, notas crédito y débito)"), (TipoSoftware.DocumentoSoporte, "Software · Documento soporte"), (TipoSoftware.DocumentoEquivalente, "Software · Documento equivalente POS"), (TipoSoftware.NominaElectronica, "Software · Nómina electrónica"), (TipoSoftware.EventosRadian, "Software · Eventos RADIAN (acuse, recibo, aceptación)") })
+{
+    var s = Model.Software(tipo);
+    <section>
+        <h2>@titulo</h2>
+        <form method="post" asp-page-handler="Software">
+            <input type="hidden" name="tipo" value="@tipo" />
+            <div class="fila">
+                <div><label>Identificador del software (GUID)</label><input type="text" name="identificador" value="@s?.Identificador" required /></div>
+                <div><label>PIN @(s != null ? "(vacío = conservar el actual)" : "")</label><input type="password" name="pin" autocomplete="new-password" placeholder="@(s != null ? "••••••" : "")" /></div>
+                <div><label>TestSetId (habilitación)</label><input type="text" name="testSet" value="@s?.TestSetId" /></div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="pruebas" value="true" @(s == null || s.AmbientePruebas ? "checked" : null) />Ambiente de pruebas (habilitación)</label>
+            <input type="hidden" name="pruebas" value="false" />
+            <button>Guardar software</button>
+        </form>
+    </section>
+}
+
+<section>
+    <h2>Certificado de firma</h2>
+    @if (c.ArchivoCertificado == null)
+    {
+        <p class="aviso">Falta el certificado. Sin él este cliente no puede firmar documentos.</p>
+    }
+    else
+    {
+        <p>@c.CertificadoSujeto<br />
+        <span class="@(c.CertificadoVenceUtc < DateTime.UtcNow.AddDays(30) ? "error" : "suave")">Vence @c.CertificadoVenceUtc?.ToString("yyyy-MM-dd")</span></p>
+    }
+    <form method="post" asp-page-handler="Certificado" enctype="multipart/form-data">
+        <div class="fila">
+            <div><label>Archivo .p12</label><input type="file" name="certificado" accept=".p12,.pfx" required /></div>
+            <div><label>Clave del certificado</label><input type="password" name="clave" autocomplete="new-password" required /></div>
+        </div>
+        <button>@(c.ArchivoCertificado == null ? "Subir certificado" : "Reemplazar certificado")</button>
+        <p class="suave">El archivo se valida antes de guardarse; la clave se guarda cifrada.</p>
+    </form>
+</section>
+
+<section>
+    <h2>Usuarios del portal</h2>
+    <p class="suave">Personas del cliente que pueden ingresar para cambiar su logo, sus claves de API, su webhook y sus sucursales. No ven otros clientes ni pueden tocar emisor, software, certificado ni producción.</p>
+    @if (Model.UsuariosPortal.Count > 0)
+    {
+        <table>
+            <thead><tr><th>Usuario</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model.UsuariosPortal)
+            {
+                <tr>
+                    <td>@u</td>
+                    <td style="display:flex;gap:8px">
+                        <form method="post" asp-page-handler="RestablecerUsuario" style="margin:0"><input type="hidden" name="usuario" value="@u" /><button class="sec" style="margin:0">Restablecer contraseña</button></form>
+                        <form method="post" asp-page-handler="EliminarUsuario" style="margin:0"><input type="hidden" name="usuario" value="@u" /><button class="sec" style="margin:0">Eliminar</button></form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    <form method="post" asp-page-handler="CrearUsuario">
+        <label>Usuario nuevo (sin espacios)</label>
+        <input type="text" name="usuario" maxlength="40" required />
+        <button>Crear usuario</button>
+        <p class="suave">Se genera una contraseña aleatoria que se muestra una sola vez.</p>
+    </form>
+</section>
+}
+
+<section>
+    <h2>Logo</h2>
+    @if (c.ArchivoLogo != null) { <img class="logo" src="/logo/@c.Id" alt="Logo de @c.Emisor.RazonSocial" /> }
+    <form method="post" asp-page-handler="Logo" enctype="multipart/form-data">
+        <label>Imagen PNG o JPG (hasta 1 MB)</label>
+        <input type="file" name="logo" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required />
+        <button>@(c.ArchivoLogo == null ? "Subir logo" : "Reemplazar logo")</button>
+    </form>
+</section>
+
+<section>
+    <h2>Sucursales</h2>
+    <p class="suave">Cada sucursal tiene su matrícula mercantil (la que va en el XML del documento), su nombre, su régimen y su logo. Con ellos se imprime la representación gráfica; si una sucursal no tiene logo se usa el del cliente.</p>
+    @if (c.Sucursales.Count > 0)
+    {
+        <table>
+            <thead><tr><th>Matrícula</th><th>Nombre</th><th>Régimen</th><th>Logo</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var s in c.Sucursales)
+            {
+                <tr>
+                    <td><code>@s.MatriculaMercantil</code></td>
+                    <td>@s.Nombre</td>
+                    <td class="suave">@s.RegimenFiscal</td>
+                    <td>
+                        @if (s.ArchivoLogo != null) { <img class="logo" src="/logo/@c.Id/@s.MatriculaMercantil" alt="Logo de @s.Nombre" /> }
+                        <form method="post" asp-page-handler="LogoSucursal" enctype="multipart/form-data" style="margin:0">
+                            <input type="hidden" name="matricula" value="@s.MatriculaMercantil" />
+                            <input type="file" name="logo" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required />
+                            <button class="sec" style="margin:0">@(s.ArchivoLogo == null ? "Subir logo" : "Reemplazar logo")</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="post" asp-page-handler="EliminarSucursal" style="margin:0">
+                            <input type="hidden" name="matricula" value="@s.MatriculaMercantil" />
+                            <button class="sec" style="margin:0">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    <form method="post" asp-page-handler="Sucursal">
+        <div class="fila">
+            <div><label>Matrícula mercantil</label><input type="text" name="matricula" maxlength="30" required /></div>
+            <div><label>Nombre del establecimiento</label><input type="text" name="nombre" maxlength="200" required /></div>
+            <div><label>Régimen fiscal (texto impreso)</label><input type="text" name="regimen" maxlength="100" /></div>
+        </div>
+        <button>Guardar sucursal</button>
+        <p class="suave">Si la matrícula ya existe, se actualizan su nombre y su régimen y se conserva el logo.</p>
+    </form>
+</section>
+
+<section>
+    <h2>Documentos recientes</h2>
+    @if (Model.Documentos.Count == 0)
+    {
+        <p class="suave">Todavía no hay documentos enviados por este cliente.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Número</th><th>Tipo</th><th>Estado</th><th>Actualizado (UTC)</th><th>PDF</th><th>Avisos</th></tr></thead>
+            <tbody>
+            @foreach (var d in Model.Documentos)
+            {
+                <tr>
+                    <td><code>@d.Numero</code>@if (d.Habilitacion) { <span class="etq" title="Enviado a la DIAN de pruebas">pruebas</span> }</td>
+                    <td class="suave">@d.TipoDocErp</td>
+                    <td>
+                        @if (d.Estado == 1) { <span class="ok">@d.EstadoTexto</span> }
+                        else if (d.Estado == 2 || d.Estado == 3) { <span class="error">@d.EstadoTexto</span> }
+                        else { <span class="aviso">@d.EstadoTexto</span> }
+                        @if (!string.IsNullOrEmpty(d.Mensaje) && d.Estado != 1) { <div class="suave">@d.Mensaje</div> }
+                    </td>
+                    <td class="suave">@d.FechaActualizado.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        @if (d.Pdf) { <a href="/pdf/@c.Id/@System.Uri.EscapeDataString(d.Numero)">Descargar</a> }
+                        else if (d.Estado == 1 && !string.IsNullOrEmpty(d.PdfMensaje)) { <span class="aviso" title="@d.PdfMensaje">Sin PDF</span> }
+                        else { <span class="suave">—</span> }
+                    </td>
+                    <td class="suave">
+                        @if (d.CorreoEnviado) { <span>correo ✓</span> }
+                        @if (d.WebhookEntregado != null) { <span>webhook ✓</span> }
+                        else if (d.WebhookPendiente) { <span class="aviso">webhook pendiente</span> }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="suave">Se muestran los 50 más recientes. El PDF solo existe para documentos aprobados por la DIAN.</p>
+    }
+</section>
+
+<section>
+    <h2>Webhook de documentos</h2>
+    <p class="suave">Opcional. Si el ERP es accesible desde internet, el servicio le avisa en esta URL cuando un documento queda aprobado o rechazado; cada aviso va firmado con HMAC-SHA256 en la cabecera <code>X-Dian-Firma</code>. Sin URL, el ERP consulta por polling (<code>api/documento/cambios</code>).</p>
+    @if (Model.SecretoWebhookNuevo != null)
+    {
+        <div class="msg"><strong>Secreto de firma</strong> — entréguelo al ERP por un canal seguro. Es la última vez que se muestra. <span class="clave">@Model.SecretoWebhookNuevo</span></div>
+    }
+    <form method="post" asp-page-handler="Webhook">
+        <div class="fila">
+            <div><label>URL</label><input type="url" name="url" maxlength="300" value="@c.WebhookUrl" placeholder="https://erp.ejemplo.com/dian/aviso" /></div>
+        </div>
+        <label><input type="checkbox" name="regenerar" value="true" /> Generar un secreto nuevo</label>
+        <button>Guardar webhook</button>
+        <p class="suave">Deje la URL vacía para quitar el webhook.@(string.IsNullOrEmpty(c.WebhookSecretoProtegido) ? "" : " Ya tiene un secreto guardado.")</p>
+    </form>
+</section>
+
+<section>
+    <h2>Claves de API</h2>
+    @if (c.Claves.Count > 0)
+    {
+        <table>
+            <thead><tr><th>Descripción</th><th>Termina en</th><th>Creada</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var k in c.Claves)
+            {
+                <tr>
+                    <td>@k.Descripcion</td>
+                    <td><code>…@k.Sufijo</code></td>
+                    <td class="suave">@k.CreadaUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@if (k.Activa) { <span class="ok">Activa</span> } else { <span class="suave">Revocada</span> }</td>
+                    <td>
+                        @if (k.Activa)
+                        {
+                            <form method="post" asp-page-handler="Revocar" style="margin:0">
+                                <input type="hidden" name="claveId" value="@k.Id" />
+                                <button class="sec" style="margin:0">Revocar</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    <form method="post" asp-page-handler="GenerarClave">
+        <label>Descripción (por ejemplo, "ERP sucursal norte")</label>
+        <input type="text" name="descripcion" maxlength="80" />
+        <button>Generar clave nueva</button>
+    </form>
+</section>

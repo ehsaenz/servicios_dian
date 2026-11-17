@@ -1,0 +1,86 @@
+# Repositorio único DIAN. Reglas para todos los proyectos.
+# Respaldos locales de los historiales anteriores: nunca publicar.
+/.git-backups/
+
+# Compilación y cachés
+[Bb][Ii][Nn]/
+[Oo][Bb][Jj]/
+*.[Oo][Bb][Jj]
+.vs/
+.idea/
+__pycache__/
+*.pyc
+node_modules/
+packages/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+artifacts/
+dist/
+publish/
+*.pdb
+*.cache
+*.tmp
+*.TMP
+*.bak
+*.log
+[Ll][Oo][Gg]/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pubxml.user
+*.publishsettings
+.codex_tmp/
+
+# Comprimidos e instaladores generados
+*.[Zz][Ii][Pp]
+*.7z
+*.rar
+*.tar
+*.gz
+*.tgz
+*.nupkg
+*.snupkg
+*.msi
+*.cab
+*-SetupFiles/
+*-cache/
+
+# Credenciales y datos locales (no borrar los archivos del disco)
+*.p12
+*.pfx
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+config-local/
+almacen/
+llaves/
+datos/
+cache/
+MtxSoftware.xml
+[Cc]onfigAPI*.json
+[Cc]onfigAPI*.JSON
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+!appsettings.*.example.json
+
+# Configuraciones particulares del legado; conservar las vistas y transforms.
+/FacturacionElectronica/00_CERTIFICADO/
+/FacturacionElectronica/04_FE_V2_WebService/[Ww]eb*.config
+!/FacturacionElectronica/04_FE_V2_WebService/Web.Debug.config
+!/FacturacionElectronica/04_FE_V2_WebService/Web.Release.config
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG*/
+/NominaRadian.Api/MaestrosDianAPI/Public/
+
+# No excluir globalmente *.dll: DEPENDENCIAS y Unificado/libs/WCF son necesarios.
+
+# Legado conservado solo localmente por decisión del propietario.
+/FacturacionElectronica/
+/NominaRadian.Api/
+/NominaRadian.Bibliotecas/
+/PosDocumentoSoporte/
+/Radian.Gateway/

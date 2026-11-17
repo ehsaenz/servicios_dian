@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Traduce el documento del ERP (DocumentoDian, el JSON de QuantyERP) a los generadores UBL de la solución
+       (los mismos que ya validó la DIAN en habilitación). -->
+  <PropertyGroup>
+    <RootNamespace>DIAN.Traduccion</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ModeloDian\ModeloDian.csproj" />
+    <ProjectReference Include="..\Metadatos\Metadatos.csproj" />
+    <ProjectReference Include="..\Documentos\Documentos.csproj" />
+    <ProjectReference Include="..\Tipos\Tipos.csproj" />
+    <ProjectReference Include="..\Util\Util.csproj" />
+  </ItemGroup>
+
+</Project>
