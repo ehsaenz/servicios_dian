@@ -159,3 +159,6 @@ secretos.json
 /PosDocumentoSoporte/
 /Radian.Gateway/
 /Compartido/
+
+# Herramientas locales de restauración (contienen rutas de configuración privada; no publicar).
+/tools/

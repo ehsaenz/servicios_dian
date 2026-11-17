@@ -47,15 +47,16 @@ Seguridad:
 
 1. **Rotar la clave de API del módulo de nómina** (la que estaba en `MetaDatosNEI.cs`). Ya salió a GitHub en el commit `9c7efd7`. Aún no se sabe en qué proveedor se genera; el responsable debe identificarla.
 2. Rotar los cuatro valores de `ModeloDian`. Siguen en GitLab (`dian_colombia/dian360`, rama `dev`, commit `952255e`) y en el historial local de `Unificado.git`. GitHub ya no los tiene.
-3. Decidir si la copia de GitLab (`dian_colombia/dian360`) se limpia; reescribirla afecta a quien ya la clonó.
-4. Decidir sobre `%LOCALAPPDATA%\Dian\fuentes-originales` (38 archivos con secretos en texto plano del código viejo).
-5. Revisar el resto de HEAD: la comprobación línea por línea de los valores de `secretos.json` no se completó en la última sesión.
+3. La copia de GitLab (`dian_colombia/dian360`) **no se limpia** por decisión del responsable. Queda con los valores de `ModeloDian` en su historial.
+4. `%LOCALAPPDATA%\Dian\fuentes-originales` (38 archivos con secretos en texto plano del código viejo) **se conserva** por decisión del responsable, fuera del repo.
+5. Revisión de HEAD: hecha. Las coincidencias línea por línea son solo plantilla XML de los `web.config` legados, no secretos.
+6. `tools/Restaurar-ConfiguracionLocal.ps1` queda en el disco, fuera del repo (`/tools/` en el `.gitignore`). El cambio al `.gitignore` está sin commitear.
 
 Despliegue:
 
 4. Variables `Pdf__*` en `dian.env` de la VM: el instalador no las agrega; falta verificar si ya están.
 5. `secretos.json` en `/var/lib/dian/` de la VM: falta confirmar que existe y que el despliegue no lo sobrescribe.
-6. Licencia de DevExpress para servidor: decisión pendiente del responsable.
+6. Licencia de DevExpress para servidor: **decidido por el responsable**. Se mantiene en el servidor; los PDF funcionaron en el despliegue. No se consultó al proveedor. Riesgo aceptado: si fallan, se revisa la licencia.
 7. Rollback del instalador: no hay procedimiento ensayado.
 8. Logo de MARLIT en la VM y regeneración de PDF.
 9. URL sin puerto (`dian.sistemas360.com`): requiere reenviar el 443 en el router y cambiar el DNS.

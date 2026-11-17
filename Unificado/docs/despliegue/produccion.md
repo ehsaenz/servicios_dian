@@ -13,7 +13,7 @@ Hoy todo corre en `quanty-lab`, una VM **de pruebas**, y **ningún cliente tiene
 | 3 | **Verificación en dos pasos** del portal. Hoy: usuario y contraseña generada, que el cliente cambia en «Mi cuenta». | Pendiente |
 | 4 | **Correo de bienvenida y recuperación** de contraseña. Depende del contrato del EmailAPI (solo se conoce `IMiddleEmail.EnviarMail`/`GetTracking`). | Pendiente |
 | 5 | **Respaldo configurado** (`dian-respaldo configurar`) y **copia fuera del servidor**, con la llave privada guardada aparte. | Pendiente |
-| 6 | **Licencia de DevExpress para servidor.** El PDF usa DevExpress 24.1; la comprobación técnica (sin marca de evaluación) no equivale a que la licencia cubra el despliegue. Lo confirma el responsable del contrato. | Pendiente |
+| 6 | **Licencia de DevExpress para servidor.** El PDF usa DevExpress 24.1 y se decidió mantenerlo en el servidor sin consultar al proveedor. Los PDF funcionaron en el despliegue realizado. Si fallan, se revisa la licencia. **Riesgo aceptado por el responsable:** la licencia no está confirmada para este uso. | Decidido (riesgo aceptado) |
 | 7 | Variables `Pdf__*` en `/etc/dian/dian.env` del servidor definitivo (el instalador no las agrega). | Pendiente ([instalacion-linux.md](instalacion-linux.md)) |
 | 8 | Firewall con los orígenes reales (`dian-firewall aplicar ...` con todas las opciones). | Por hacer en el servidor nuevo |
 | 9 | Certificado definitivo (ver [tls-y-certificados.md](tls-y-certificados.md)). | Por hacer |
