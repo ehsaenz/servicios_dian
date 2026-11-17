@@ -7,8 +7,8 @@ Documento de traspaso entre sesiones de trabajo. Describe lo que está hecho, d�
 ## Repositorio
 
 - Carpeta raíz de git: `DIAN` (`C:\Users\Eduardo\source\repos\SISTEMAS360\DIAN`).
-- Rama `dev`, único commit `49db1ef` ("Inicializar DIAN Unificado y su documentación"). Reemplazó al commit `9c7efd7` mediante force push para quitar la clave de API literal de `MetaDatosNEI.cs`.
-- Remoto `origin`: `git@github.com:ehsaenz/servicios_dian.git`. `dev` en GitHub apunta a `49db1ef`. El commit anterior sigue accesible en GitHub por su hash hasta que GitHub lo recolecte; no está en el repo local.
+- Rama `dev`: `d891bcf` (documentación y pruebas) sobre `49db1ef` ("Inicializar DIAN Unificado y su documentación"). `49db1ef` reemplazó al commit `9c7efd7` mediante force push para quitar la clave de API literal de `MetaDatosNEI.cs`.
+- Remoto `origin`: `git@github.com:ehsaenz/servicios_dian.git`. `dev` en GitHub apunta a `d891bcf`. El commit anterior sigue accesible en GitHub por su hash hasta que GitHub lo recolecte; no está en el repo local.
 - `core.sshCommand` del repositorio apunta a `C:/Windows/System32/OpenSSH/ssh.exe`. Sin ese ajuste, `git push` no ve el agente SSH de Windows.
 - Respaldos de historiales anteriores en `DIAN\.git-backups\` (ignorados por git, no publicar). `Unificado.git` contiene 34 commits de `dev` y 4 de `master`, con secretos en 17 commits.
 
@@ -32,8 +32,6 @@ Sin commitear (en el árbol de trabajo):
 - `.gitignore` (raíz)
 - `Unificado/src/Shared/ModeloDian/Servicios/AccesoPruebas.cs`
 - `Unificado/tests/Shared.Pruebas/ConfiguracionSecretosPruebas.cs` y `SecretosLocalesTests.cs`
-- `Unificado/docs/despliegue/secretos-locales.md`
-- `docs/secretos-locales.md` (duplicado; no publicar)
 - `tools/` (no publicar: contiene `Restaurar-ConfiguracionLocal.ps1`)
 
 ## Servidor `quanty-lab`
