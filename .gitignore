@@ -71,6 +71,9 @@ appsettings.*.json
 # Configuraciones particulares del legado; conservar las vistas y transforms.
 /FacturacionElectronica/00_CERTIFICADO/
 /FacturacionElectronica/04_FE_V2_WebService/[Ww]eb*.config
+# Réplicas por cliente del web.config (Web_ABREV-EMPRESA.config, web_xxx.config): contienen datos de conexión y claves.
+# Se ignoran en cualquier carpeta del legado, no solo en la raíz del servicio.
+**/[Ww]eb[_ -]*.config
 !/FacturacionElectronica/04_FE_V2_WebService/Web.Debug.config
 !/FacturacionElectronica/04_FE_V2_WebService/Web.Release.config
 /NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG*/
@@ -78,9 +81,81 @@ appsettings.*.json
 
 # No excluir globalmente *.dll: DEPENDENCIAS y Unificado/libs/WCF son necesarios.
 
-# Legado conservado solo localmente por decisión del propietario.
+
+# Archivo de secretos externo; excluirlo también si se copia accidentalmente.
+secretos.json
+
+# Configuraciones privadas conservadas en AppData/Local/Dian/secretos.json.
+/FacturacionElectronica/03_FE_V2_Library/eFacturacionColombia_V2/Resources/Web.config
+/FacturacionElectronica/04_FE_V2_WebService/web.config
+/FacturacionElectronica/04_FE_V2_WebService/WebMSD.config
+/FacturacionElectronica/04_FE_V2_WebService/Web_ F-RED.config
+/FacturacionElectronica/04_FE_V2_WebService/web_aresma.config
+/FacturacionElectronica/04_FE_V2_WebService/web_CHIS.config
+/FacturacionElectronica/04_FE_V2_WebService/web_el_graned_del_hogar.config
+/FacturacionElectronica/04_FE_V2_WebService/web_FASTTEX.config
+/FacturacionElectronica/04_FE_V2_WebService/Web_LDB.config
+/FacturacionElectronica/04_FE_V2_WebService/web_LEAH.config
+/FacturacionElectronica/04_FE_V2_WebService/Web_MDPA.config
+/FacturacionElectronica/04_FE_V2_WebService/Web_MSD.config
+/FacturacionElectronica/04_FE_V2_WebService/web_NAC.config
+/FacturacionElectronica/04_FE_V2_WebService/Web_old.config
+/FacturacionElectronica/04_FE_V2_WebService/web_SIS360.config
+/FacturacionElectronica/04_FE_V2_WebService/web_vibra.config
+/FacturacionElectronica/05_FE_V2_WS-Client/App.config
+/NominaRadian.Api/API_NOMINA/API_NOMINA/appsettings.Development.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/appsettings.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG/ConfigAPI.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_FERREO/ConfigAPI.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_LEAH/ConfigAPI - copia.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_LEAH/ConfigAPI.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_LEAH/ConfigAPI_copia.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_MSD/ConfigAPI.JSON
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_RED_OLD/ConfigAPI.json
+/NominaRadian.Api/API_NOMINA/API_NOMINA/CONFIG_RED_PROD/ConfigAPI.json
+/NominaRadian.Api/MaestrosDianAPI/MaestrosDianAPI/appsettings.Development.json
+/NominaRadian.Api/MaestrosDianAPI/Public/MaestrosDian/appsettings.Development.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/appsettings.Development.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/appsettings.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI - FERREO_PRUEBA.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI PRUEBAS.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_CHIS.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_dev.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_ECO.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_FERREO.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_JHS.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_LE.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_LEMY.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_MEGAFER.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_MFD.json
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/FacturacionElectronicaAPI/CONFIG/ConfigAPI_SIS360.json
+/Radian.Gateway/appsettings.json
+
+# Ensamblados anteriores con secretos incrustados: recompilar antes de distribuir.
+/FacturacionElectronica/DEPENDENCIAS/DianModelDoc.dll
+/FacturacionElectronica/DEPENDENCIAS/FacturacionColombia_V2.dll
+/FacturacionElectronica/DEPENDENCIAS/Librerias_2022_12_08/DianModelDoc.dll
+/FacturacionElectronica/DEPENDENCIAS/Librerias_2022_12_08/WS_V2_HttpClientLib.dll
+/FacturacionElectronica/DEPENDENCIAS/WS_V2_HttpClientLib.dll
+/FacturacionElectronica/DEPENDENCIAS/netstandard2.0/DianModelDoc.dll
+/FacturacionElectronica/DEPENDENCIAS/netstandard2.0/WS_V2_HttpClientLib.dll
+/NominaRadian.Api/Dependencias/MtxCrypto.dll
+/NominaRadian.Api/Dependencias/eFacturacionColombia_NETCore.Tests.dll
+/NominaRadian.Api/DependenciasExternas/MtxCrypto.dll
+/NominaRadian.Bibliotecas/DEPENDENCIAS/MtxCrypto.dll
+/PosDocumentoSoporte/eFacturacionColombia_NETCore/DEPENDENCIAS/MtxCrypto.dll
+/Radian.Gateway/Dependencias/DianModelDoc.dll
+/Radian.Gateway/Dependencias/WS_V2_HttpClientLib.dll
+
+# Documentos reales del legado: no publicar datos de clientes.
+/NominaRadian.Api/API_NOMINA/API_NOMINA/DOCS/
+
+# Código legado (.NET Framework y servicios anteriores): no se versiona en este repositorio. Contiene secretos y
+# configuraciones de clientes. Los secretos migrados viven en %LOCALAPPDATA%\Dian\secretos.json, fuera del repo.
 /FacturacionElectronica/
 /NominaRadian.Api/
 /NominaRadian.Bibliotecas/
 /PosDocumentoSoporte/
 /Radian.Gateway/
+/Compartido/

@@ -9,7 +9,7 @@
 | Repositorio | La raíz Git es `DIAN`. Remoto: `https://github.com/ehsaenz/servicios_dian.git`; los remotos anteriores permanecen en el respaldo local. |
 | Ramas | La rama inicial del repositorio consolidado es `dev`; las ramas antiguas se conservan en los historiales respaldados. |
 | Quién sube | Quien hace los commits no sube: el responsable del repositorio revisa y hace el `push`. |
-| Identidad | Autor de los commits: la del responsable (`Eduardo Saenz`, correo del repositorio). Los commits que redacta un asistente de IA llevan además la línea `Co-Authored-By: …` al final del mensaje. |
+| Identidad | Autor de los commits: la del responsable (`Eduardo Hernández Sáenz`, correo del repositorio). Los commits que redacta un asistente de IA llevan además la línea `Co-Authored-By: …` al final del mensaje. |
 | Mensajes | En **español**: línea de título que dice el cambio (no el archivo) y un **cuerpo** que explica el porqué, el alcance y cómo se verificó. |
 | Tamaño | Un commit por cambio coherente (una fase, un arreglo). No mezclar documentación, código y configuración de despliegue sin relación. |
 | Proyectos antiguos | `NominaRadian.*`, `PosDocumentoSoporte\…`, `FacturacionElectronica\…` y `Radian.Gateway` permanecen solo en el equipo local, excluidos del repositorio publicado y no se modifican durante la migración, salvo correcciones de soporte que se portan aquí. |
@@ -68,6 +68,7 @@ La configuración actual usa `docs/*` y excepciones para `README.md`, `desarroll
 - Toda funcionalidad nueva se documenta en la carpeta correspondiente de `docs/` (desarrollo, despliegue, mantenimiento, integración) en el mismo cambio.
 - Los registros históricos de decisiones y bitácoras por fase están en `DIAN\docs`, dentro del repositorio raíz (`plan-unificacion-api.md`, `fase1-…` a `fase4-…`). Cuando algo de allí pase a ser norma, copie lo esencial a esta documentación.
 - Escriba para quien viene después: qué hace, por qué, cómo se prueba y qué **no** se verificó.
+- Al cerrar una sesión de trabajo, se actualiza [`docs/estado-del-proyecto.md`](../../../docs/estado-del-proyecto.md) (raíz del repositorio): commits y cambios sin commitear, pendientes cerrados o nuevos y próximos pasos. Se verifica con `git log` y `git status` antes de escribir, no lleva valores de secretos y va en su propio commit (`docs: actualizar estado del proyecto`).
 
 ## 6. Reglas de seguridad operativa durante el desarrollo
 
@@ -78,5 +79,5 @@ La configuración actual usa `docs/*` y excepciones para `README.md`, `desarroll
 
 ## No verificado
 
-- El `git config user.name`/`user.email` local coincide con la identidad documentada (se vio en los commits recientes, no se revisó el archivo de configuración).
+- El `git config user.name` de este equipo debe ser `Eduardo Hernández Sáenz`. Hoy el archivo `C:\Users\Eduardo\.gitconfig-sis360` tiene `Eduardo Henández` (con la tilde mal puesta): corregir antes de publicar.
 - Que existan hooks de git o integración continua: no se encontró ninguno, pero no se buscó en el servidor del remoto.
