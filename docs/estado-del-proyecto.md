@@ -26,13 +26,14 @@ Documento de traspaso entre sesiones de trabajo. Describe lo que está hecho, d�
 - Documentación de cuatro colecciones en `Unificado/docs/` (desarrollo, despliegue, mantenimiento, integración).
 - Despliegue Linux: `Unificado/docs/despliegue/instalacion-linux.md`, `Unificado/linux/despliegue/LEEME.md` y la bitácora `docs/fase4-publicacion.md`.
 
-Sin commitear (en el árbol de trabajo):
+Limpieza de logos (commit de este cambio en `dev`):
 
-- `Unificado/docs/desarrollo/convenciones.md` (corrección de identidad)
-- `.gitignore` (raíz)
-- `Unificado/src/Shared/ModeloDian/Servicios/AccesoPruebas.cs`
-- `Unificado/tests/Shared.Pruebas/ConfiguracionSecretosPruebas.cs` y `SecretosLocalesTests.cs`
-- `tools/` (no publicar: contiene `Restaurar-ConfiguracionLocal.ps1`)
+- `src/Shared/Tenants/LimpiadorLogo.cs` (nuevo): quita de los PNG los bloques que no son de imagen (`caBX` de C2PA, `tEXt`, `eXIf`...) y de los JPG/JPEG los segmentos APP1 (EXIF), APP3–APP15 (incluido C2PA en APP11) y COM. Conserva APP0, APP2 (perfil ICC) y APP14. Los píxeles no cambian.
+- `src/Shared/Tenants/ClienteAdminServicio.cs`: `SubirLogoAsync` y `SubirLogoSucursalAsync` limpian el logo antes de guardarlo y dejan en la auditoría lo que quitaron (`metadatos quitados: ...`).
+- `tests/Admin.Pruebas/LimpiadorLogoTests.cs` (nuevo): 10 pruebas (5 de PNG, 5 de JPEG). Verificado: `Admin.Pruebas` da 42 correctas y 11 omitidas (las de MySQL, que requieren base real).
+- Verificado además con un JPG real (logo de prueba) al que se inyectaron EXIF y C2PA: la limpieza dejó el archivo idéntico al original. Prueba temporal, ya borrada.
+- **No verificado:** que DevExpress genere el PDF con un JPG limpio. Eso se confirma solo en el servidor, después de publicar.
+- `tools/` sigue en `.gitignore` (no publicar: contiene `Restaurar-ConfiguracionLocal.ps1`).
 
 ## Servidor `quanty-lab`
 
@@ -40,6 +41,10 @@ Sin commitear (en el árbol de trabajo):
 - Servicios: `dian-pos-api` y `dian-admin-web` activos; `nginx.service` habilitado.
 - Entrada pública por IIS (`services.sistemas360.com:47125`) hacia nginx en el puerto 8090.
 - Los cambios en servidores se anuncian y se confirman antes de ejecutarlos.
+- Habilitación MARLIT (no es producción): la factura de prueba **SETP990001006 está Aprobada** por la DIAN (CUFE `9d2118627e…`). Su PDF se generó con `200` y `%PDF`.
+- Causa del fallo del PDF: el logo de MARLIT traía metadatos C2PA (`caBX`) que DevExpress no puede leer. Se quitó en el servidor con una copia limpia; el original queda en `/var/lib/dian/almacen/clientes/MARLIT/logo.original.bak`. Detalle en [solucion-de-problemas.md](../Unificado/docs/despliegue/solucion-de-problemas.md).
+- El servidor sigue con el binario anterior: la limpieza automática de logos aún no está publicada.
+- **No verificado:** que `~/factura-ok.json` (contiene la clave técnica del set) se haya borrado en `quanty-lab`.
 
 ## Pendientes
 
@@ -58,7 +63,9 @@ Despliegue:
 5. `secretos.json` en `/var/lib/dian/` de la VM: falta confirmar que existe y que el despliegue no lo sobrescribe.
 6. Licencia de DevExpress para servidor: **decidido por el responsable**. Se mantiene en el servidor; los PDF funcionaron en el despliegue. No se consultó al proveedor. Riesgo aceptado: si fallan, se revisa la licencia.
 7. Rollback del instalador: no hay procedimiento ensayado.
-8. Logo de MARLIT en la VM y regeneración de PDF.
+8. Logo de MARLIT en la VM: limpio y PDF generado (2026-11-17). Pendiente: borrar `logo.original.bak` cuando se confirme el PDF, y revisar `/tmp` del servidor.
+8b. **Publicar la versión con `LimpiadorLogo`** en `quanty-lab` (plan con comandos antes de ejecutar; requiere confirmación). Después, volver a subir los logos existentes de los clientes para que queden limpios.
+8c. Logos JPG de otros clientes de Facturación Electrónica: se pueden subir en cuanto esté publicada la versión; hoy se aceptan `.png`, `.jpg` y `.jpeg`.
 9. URL sin puerto (`dian.sistemas360.com`): requiere reenviar el 443 en el router y cambiar el DNS.
 10. Respaldo fuera del servidor, con la llave privada guardada aparte.
 11. Verificación en dos pasos del portal y correo de recuperación (dependen del EmailAPI).

@@ -93,6 +93,18 @@ No ejecute `python` sin archivo (espera entrada estándar). Use las herramientas
 **Causa:** DevExpress no encuentra `DevExpress.Drawing.v24.1.Skia` y `DevExpress.Pdf.v24.1.SkiaRenderer` y cae a GDI+.
 **Solución:** estas DLL deben estar en la carpeta `pdf/` de la API (el empaquetado ya las incluye); no hace falta instalar nada en el servidor. Revisar las variables `Pdf__*` de `dian.env` ([instalacion-linux.md](instalacion-linux.md)).
 
+### El PDF responde `503` con «Data at the root level is invalid. Line 1, position 1» (la factura sí está aprobada)
+**Síntoma:** `GET /api/documento/pdf/{numero}` responde `503`; `estado` muestra `Estado: Aprobado`, `Pdf: false` y el mensaje «No se pudo generar el PDF: Data at the root level is invalid...».
+**Causa (caso MARLIT, 2026-11-17):** el error no venía del XML firmado ni de la respuesta de la DIAN (ambos estaban bien formados). La traza de `journalctl` mostraba que el fallo estaba al cargar el **logo** del cliente: `RenderizadorPdf.Generar` → `DXImage.FromStream` → `SvgLoader`. El archivo `logo.png` era un PNG válido, pero traía el bloque de metadatos **C2PA** (`caBX`, credenciales de contenido que agregan algunas herramientas al exportar). DevExpress intenta leer la imagen como SVG antes que como PNG y se cae con ese error. El sistema acepta el archivo al subirlo porque solo revisa la firma del PNG (ver [logo.md](../mantenimiento/logo.md)).
+**Cómo se diagnosticó:**
+```bash
+sudo journalctl -u dian-pos-api --since "15 min ago" --no-pager | grep -i -A12 "pdf"   # traza: busque RenderizadorPdf / DXImage
+sudo grep -a -c caBX /var/lib/dian/almacen/clientes/<cliente>/logo.png                   # 1 o más = tiene metadatos C2PA
+```
+**Solución aplicada:** se quitó el bloque `caBX` copiando solo los bloques de imagen del PNG (los píxeles no cambiaron), se respaldó el original como `logo.original.bak` y se reinició `dian-pos-api`. Después, `GET .../pdf/{numero}` respondió `200` con `%PDF`.
+**Prevención:** desde el cambio de `ClienteAdminServicio` (`LimpiadorLogo`), el panel quita esos metadatos al subir un PNG o un JPG. Los logos subidos antes no cambian solos: vuelva a subirlos.
+**Si vuelve a pasar:** no regenere a ciegas. Revise el logo del cliente con la comprobación de arriba antes de cualquier otro cambio, y pruebe el PDF después de cada cambio. Para revertir, copie `logo.original.bak` sobre `logo.png`.
+
 ## No verificado
 
 - Todos los casos de arriba se vieron en las pruebas de `quanty-lab` y del PC de desarrollo; no se han repetido en otro servidor.

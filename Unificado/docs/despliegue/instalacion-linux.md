@@ -18,6 +18,8 @@ Desde la carpeta `Unificado`:
 ```bash
 dotnet publish src/Pos/Pos.Api -c Release -r linux-x64 --self-contained true -o dist/servicios/Pos.Api
 dotnet publish src/Admin/Admin.Web -c Release -r linux-x64 --self-contained true -o dist/servicios/Admin.Web
+# Antes de empaquetar, dist/servicios/Pos.Api/pdf debe existir (generador DevExpress; ver plantillas-pdf.md).
+# publish NO la crea, y borrar dist/servicios la elimina: conserve una copia de pdf/ fuera de dist.
 tar -czf dist/servicios-linux-x64.tar.gz -C dist servicios -C ../linux despliegue
 ```
 
@@ -32,7 +34,8 @@ Notas:
 ```bash
 scp dist/servicios-linux-x64.tar.gz quanty-lab:~/
 ssh quanty-lab 'mkdir -p ~/instalacion && tar -xzf ~/servicios-linux-x64.tar.gz -C ~/instalacion'
-ssh quanty-lab 'cd ~/instalacion/despliegue && sudo ./instalar.sh ~/instalacion/servicios'
+# Un paquete armado en Windows no conserva el permiso de ejecución de los .sh: se restaura aquí.
+ssh quanty-lab 'chmod +x ~/instalacion/despliegue/*.sh && cd ~/instalacion/despliegue && sudo ./instalar.sh ~/instalacion/servicios'
 ```
 
 (El paquete puede dejarse en cualquier carpeta; lo importante es que `instalar.sh` reciba la carpeta que contiene `Pos.Api/` y `Admin.Web/`.) Si el paquete se armó en Windows, el instalador le da permiso de ejecución a los dos binarios.

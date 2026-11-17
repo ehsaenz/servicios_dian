@@ -228,6 +228,7 @@ namespace DIAN.Tenants
         public async Task SubirLogoSucursalAsync(string usuario, string id, string matricula, string nombreOriginal, byte[] contenido, CancellationToken c = default)
         {
             var extension = ValidarLogo(nombreOriginal, contenido);
+            contenido = PrepararLogo(extension, contenido, out var quitados);
             var cliente = await Requerir(id, c);
             var sucursal = cliente.Sucursales.FirstOrDefault(s => string.Equals(s.MatriculaMercantil, matricula, StringComparison.OrdinalIgnoreCase))
                 ?? throw new ErrorAdministracion($"No existe la sucursal {matricula}.");
@@ -242,7 +243,7 @@ namespace DIAN.Tenants
             await _almacen.GuardarArchivoAsync(id, nombre, contenido, c);
             sucursal.ArchivoLogo = nombre;
             await _almacen.GuardarAsync(cliente, c);
-            _auditoria.Registrar(usuario, "sucursal-logo", id, $"{sucursal.MatriculaMercantil}: {nombre}");
+            _auditoria.Registrar(usuario, "sucursal-logo", id, $"{sucursal.MatriculaMercantil}: {nombre}{DescribirQuitados(quitados)}");
         }
 
         /// <summary>
@@ -299,7 +300,8 @@ namespace DIAN.Tenants
 
         public async Task SubirLogoAsync(string usuario, string id, string nombreOriginal, byte[] contenido, CancellationToken c = default)
         {
-            ValidarLogo(nombreOriginal, contenido);
+            var formato = ValidarLogo(nombreOriginal, contenido);
+            contenido = PrepararLogo(formato, contenido, out var quitados);
             var extension = Path.GetExtension(nombreOriginal).ToLowerInvariant();
             var cliente = await Requerir(id, c);
             var nombre = "logo" + (extension == ".png" ? ".png" : ".jpg");
@@ -311,7 +313,7 @@ namespace DIAN.Tenants
             await _almacen.GuardarArchivoAsync(id, nombre, contenido, c);
             cliente.ArchivoLogo = nombre;
             await _almacen.GuardarAsync(cliente, c);
-            _auditoria.Registrar(usuario, "logo", id, nombre);
+            _auditoria.Registrar(usuario, "logo", id, nombre + DescribirQuitados(quitados));
         }
 
         private static bool TieneFirmaDeImagen(byte[] b)
@@ -320,6 +322,27 @@ namespace DIAN.Tenants
             var jpg = b.Length > 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF;
             return png || jpg;
         }
+
+        /// <summary>
+        /// Quita del logo los metadatos que DevExpress no puede leer (ver <see cref="LimpiadorLogo"/>), en PNG y en JPG.
+        /// </summary>
+        private static byte[] PrepararLogo(string formato, byte[] contenido, out List<string> quitados)
+        {
+            try
+            {
+                return formato == ".png"
+                    ? LimpiadorLogo.LimpiarPng(contenido, out quitados)
+                    : LimpiadorLogo.LimpiarJpeg(contenido, out quitados);
+            }
+            catch (InvalidDataException)
+            {
+                var tipo = formato == ".png" ? "PNG" : "JPG";
+                throw new ErrorAdministracion($"El {tipo} está dañado o no se puede leer. Expórtelo de nuevo como {tipo} y vuelva a subirlo.");
+            }
+        }
+
+        private static string DescribirQuitados(List<string> quitados) =>
+            quitados.Count == 0 ? string.Empty : "; metadatos quitados: " + string.Join(", ", quitados.Distinct());
 
         /// <summary>Crea una clave de API. Devuelve la clave completa, que no se vuelve a poder ver.</summary>
         public async Task<string> GenerarClaveAsync(string usuario, string id, string descripcion, CancellationToken c = default)
