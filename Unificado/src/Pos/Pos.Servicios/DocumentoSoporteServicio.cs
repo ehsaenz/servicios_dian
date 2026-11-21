@@ -75,9 +75,9 @@ namespace DIAN.Pos.Servicios
             if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento soporte no tiene TestSetId (identificador del set de pruebas).");
             if (ds == null || string.IsNullOrWhiteSpace(ds.Numero)) throw new ArgumentException("El documento soporte no trae número.");
 
-            var firmado = Firmar(ds, software, out _, out _);
+            var firmado = Firmar(ds, software, out var factura, out _);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, ds.Numero, _carpetaDatos, "set-ds.json", EsperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, ds.Numero, _carpetaDatos, "set-ds.json", EsperaSet, factura.UUID?.Value ?? string.Empty);
         }
 
         private byte[] Firmar(MetaDatosDE ds, SoftwareConfig software, out InvoiceType factura, out string xml)

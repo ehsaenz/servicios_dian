@@ -146,7 +146,7 @@ namespace DIAN.Nomina.Servicios
                 throw new ArgumentException(prep.ErrorMensaje);
             }
 
-            return EnviadorSetPruebas.Enviar(enviador, prep.Firmado, software.TestSetId, prep.Numero, _carpetaCliente, "set-radian.json", EsperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, prep.Firmado, software.TestSetId, prep.Numero, _carpetaCliente, "set-radian.json", EsperaSet, prep.UuidReferencia);
         }
 
         private (byte[] Firmado, string Numero, string UuidReferencia, string ErrorCodigo, string ErrorMensaje) PrepararYFirmar(

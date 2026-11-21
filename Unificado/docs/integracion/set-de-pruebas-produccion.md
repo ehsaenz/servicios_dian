@@ -20,7 +20,7 @@ El archivo queda en la carpeta de datos del cliente; el panel de administración
 
 - El documento **no** se guarda en el almacén de operaciones ni entra en reintentos o idempotencia local.
 - La API valida los datos del bloque, firma con el certificado del cliente y lo envía con `EnviarSetPruebas` usando el `TestSetId` configurado para ese módulo, consultando el resultado del lote (`GetStatusZip`).
-- Respuesta `200` con `{ Estado, Mensaje, ZipKey, Numero, FechaUtc }`:
+- Respuesta `200` con `{ Estado, Mensaje, ZipKey, Numero, FechaUtc, CodigoDian, Uuid }`:
   - `aceptado`: la DIAN respondió «se encuentra Aceptado» (código 2). Solo entonces el bloque cumple el requisito de set para pasar a producción.
   - `rechazado`: código 99 (o errores devueltos al recibir el lote sin `ZipKey`). Revisar `Mensaje` (incluye las reglas fallidas), corregir el documento en el ERP y reenviar otro consecutivo.
   - `en_proceso`: la DIAN aún no decide o autorizó el documento individual pero el set aún no completa sus requisitos. Reenviar el siguiente documento o probar más tarde.

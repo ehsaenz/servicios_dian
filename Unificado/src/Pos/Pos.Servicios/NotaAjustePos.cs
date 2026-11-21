@@ -228,10 +228,10 @@ namespace DIAN.Pos.Servicios
                            ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_EQUIVALENTE no están bien configurados");
             if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento equivalente (POS) no tiene TestSetId (identificador del set de pruebas).");
 
-            var (_, _, xml) = Construir(de, software, habilitacion);
+            var (_, nota, xml) = Construir(de, software, habilitacion);
             var firmado = FirmarXml(xml, de.FechaEmision);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, de.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, de.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet, nota.UUID?.Value ?? string.Empty);
         }
 
         private (GeneradorNotaAjusteDocumentoEquivalente Generador, CreditNoteType Nota, string Xml) Construir(

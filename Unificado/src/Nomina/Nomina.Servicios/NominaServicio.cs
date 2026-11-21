@@ -89,6 +89,7 @@ namespace DIAN.Nomina.Servicios
 
             string numeroDocumento;
             byte[] firmado;
+            string cune;
             if (info.TipoEnvio == enmTipoEnvio.Eliminar || info.TipoEnvio == enmTipoEnvio.Reemplazar)
             {
                 if (info.TipoDocumentoElectronico != enmTipoDocElec.NominaElectronicaIndividualAjuste)
@@ -99,7 +100,7 @@ namespace DIAN.Nomina.Servicios
                 var letra = info.TipoEnvio == enmTipoEnvio.Eliminar ? "E" : "R";
                 numeroDocumento = info.Prefijo + letra + info.Numero;
                 var referencia = new ReferenciaNominaIndividual { Numero = numeroAjuste, Cune = cuneAjuste, FechaGeneracion = nom.DocumentoReferencia.FechaGeneracion };
-                (firmado, _, _) = FirmarAjuste(nom, info.TipoEnvio, referencia);
+                (firmado, _, cune) = FirmarAjuste(nom, info.TipoEnvio, referencia);
             }
             else
             {
@@ -109,10 +110,10 @@ namespace DIAN.Nomina.Servicios
                     throw new ArgumentException("Solo los documentos de Nómina de Ajuste necesitan los campos [Referencia.Numero] y [Referencia.CUNE].");
 
                 numeroDocumento = info.Prefijo + info.Numero;
-                (firmado, _, _) = FirmarIndividual(nom);
+                (firmado, _, cune) = FirmarIndividual(nom);
             }
 
-            return EnviadorSetPruebas.Enviar(Enviador(), firmado, software.TestSetId, numeroDocumento, _carpetaCliente, "set-nomina.json", EsperaSet);
+            return EnviadorSetPruebas.Enviar(Enviador(), firmado, software.TestSetId, numeroDocumento, _carpetaCliente, "set-nomina.json", EsperaSet, cune);
         }
 
         public ResponseDian Generar(MetaDatosNEI nom, bool soloCrearXml)

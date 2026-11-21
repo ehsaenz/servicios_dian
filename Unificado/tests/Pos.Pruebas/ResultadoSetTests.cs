@@ -177,6 +177,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
     {
         var tiquete = await LeerSet(await PostConSet("/api/DocumentoElectronico/EnviarDE", DatosPos.Tiquete("900000001", "CLIENTE A SAS", "EPOS901")));
         Assert.Equal("aceptado", tiquete.Estado);
+        Assert.Equal("2", tiquete.CodigoDian);
+        Assert.Equal(96, tiquete.Uuid.Length);
         Assert.Equal("EPOS901", tiquete.Numero);
         Assert.True(File.Exists(Path.Combine(_datos, "A", "set-pos.json")));
         Assert.False(File.Exists(Path.Combine(_datos, "A", "XML", "DETP-EPOS901.xml")));
@@ -184,6 +186,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
         var cude = new string('a', 96);
         var nota = await LeerSet(await PostConSet("/api/DocumentoElectronico/EnviarDE", DatosPos.NotaAjuste("900000001", "CLIENTE A SAS", "NA901", "EPOS901", cude)));
         Assert.Equal("aceptado", nota.Estado);
+        Assert.Equal("2", nota.CodigoDian);
+        Assert.Equal(96, nota.Uuid.Length);
         Assert.Equal("NA901", nota.Numero);
         Assert.False(File.Exists(Path.Combine(_datos, "A", "XML", "NATP-NA901.xml")));
     }
@@ -193,6 +197,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
     {
         var r1 = await LeerSet(await PostConSet("/api/DocumentoSoporte/EnviarDSNO", DocSoporteA()));
         Assert.Equal("aceptado", r1.Estado);
+        Assert.Equal("2", r1.CodigoDian);
+        Assert.Equal(96, r1.Uuid.Length);
         var archivoSet = Path.Combine(_datos, "A", "set-ds.json");
         Assert.True(File.Exists(archivoSet));
         Assert.DoesNotContain("DSNO-", string.Join("|", Directory.GetFiles(Path.Combine(_datos, "A"))));
@@ -203,6 +209,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
         ds2.Numero = "SEDS984000902";
         var r2 = await LeerSet(await PostConSet("/api/DocumentoElectronico/EnviarDE", ds2));
         Assert.Equal("en_proceso", r2.Estado);
+        Assert.Equal("00", r2.CodigoDian);
+        Assert.Equal(96, r2.Uuid.Length);
         Assert.Contains("\"Estado\": \"en_proceso\"", File.ReadAllText(archivoSet));
     }
 
@@ -211,6 +219,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
     {
         var r1 = await LeerSet(await PostConSet("/api/v1/Nomina/EnviarNE", DatosNomina.Individual("900000001", "CLIENTE A SAS", "NOM", 901)));
         Assert.Equal("aceptado", r1.Estado);
+        Assert.Equal("2", r1.CodigoDian);
+        Assert.Equal(96, r1.Uuid.Length);
         Assert.Equal("NOM901", r1.Numero);
         Assert.Contains("setnom-900000001", _fabrica.SetsUsados);
         Assert.True(File.Exists(Path.Combine(_datos, "A", "set-nomina.json")));
@@ -222,6 +232,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
         var ajuste = DatosNomina.Ajuste("900000001", "CLIENTE A SAS", "NOM", 902, enmTipoEnvio.Reemplazar, new string('b', 96), "NOM901");
         var r2 = await LeerSet(await PostConSet("/api/v1/Nomina/EnviarNE", ajuste));
         Assert.Equal("rechazado", r2.Estado);
+        Assert.Equal("99", r2.CodigoDian);
+        Assert.Equal(96, r2.Uuid.Length);
         Assert.Contains("NIE001", r2.Mensaje);
     }
 
@@ -235,6 +247,8 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
             new EventoRadian { Codigo = "030", UUID = cufe, Numero = "EVT901" }));
 
         Assert.Equal("aceptado", r.Estado);
+        Assert.Equal("2", r.CodigoDian);
+        Assert.Equal(cufe, r.Uuid);
         Assert.Equal("EVT901", r.Numero);
         Assert.Contains("setradian-900000001", _fabrica.SetsUsados);
         Assert.True(File.Exists(Path.Combine(_datos, "A", "set-radian.json")));

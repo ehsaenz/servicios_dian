@@ -129,9 +129,9 @@ namespace DIAN.Pos.Servicios
             if (tpe == null || string.IsNullOrWhiteSpace(tpe.Numero)) throw new ArgumentException("El documento no trae número.");
 
             ValidarDatos(tpe, out var codigoComprador, out var nombreComprador);
-            var firmado = Firmar(tpe, software, codigoComprador, nombreComprador, out _, out _, out _);
+            var firmado = Firmar(tpe, software, codigoComprador, nombreComprador, out var documento, out _, out _);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, tpe.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, tpe.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet, documento.UUID?.Value ?? string.Empty);
         }
 
         private void ValidarDatos(MetaDatosDE tpe, out string codigoComprador, out string nombreComprador)
