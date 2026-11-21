@@ -1,0 +1,66 @@
+{
+  "TipoDocDian": "91",
+  "Numero": "NC990000516",
+  "TipoDocObj": {
+    "Codigo": "NC",
+    "Nombre": "NOTA CRÉDITO ELECTRÓNICA"
+  },
+  "FechaHoraDoc": "2026-11-08 11:00",
+  "FormaPago": {
+    "Nombre": "Contado"
+  },
+  "OrdenRef": {
+    "TipoDoc": "",
+    "Numero": ""
+  },
+  "DocumentoRef": {
+    "Numero": "SETP990000515",
+    "CUFE": "a3b1c9d2e4f5061728394a5b6c7d8e9f00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+  },
+  "Concepto": "Anulación de factura electrónica",
+  "Emisor": {
+    "RazonSocial": "EMPRESA DE EJEMPLO S.A.S.",
+    "NIT": "900000000-1",
+    "TelefonoContacto": "3000000000",
+    "EmailContacto": "facturacion@ejemplo.com",
+    "LocacionPrincipal": {
+      "Direccion": "CALLE 1 # 2-3",
+      "NombreMunicipio": "Cali",
+      "NombreDepartamento": "Valle del Cauca"
+    }
+  },
+  "Receptor": {
+    "RazonSocial": "CLIENTE DE PRUEBA S.A.S.",
+    "NIT": "900000001",
+    "TelefonoContacto": "3100000000",
+    "LocacionPrincipal": {
+      "Direccion": "CARRERA 4 # 5-6",
+      "NombreMunicipio": "Bogotá",
+      "NombreDepartamento": "Bogotá D.C."
+    }
+  },
+  "Items": [
+    {
+      "Codigo": "A001",
+      "Cant": 2,
+      "Referencia": "REF-001",
+      "Detalle": "Camiseta de prueba",
+      "ValorUnit": 50000,
+      "SubTotal": 100000,
+      "ValorDescuento": 0,
+      "ValorIVA": 19000,
+      "ValorTotal": 119000
+    }
+  ],
+  "SubTotal": 100000,
+  "ValorDescuento": 0,
+  "ValorIVA": 19000,
+  "ValorTotal": 119000,
+  "ReteFuente": 0,
+  "ReteIVA": 0,
+  "ReteICA": 0,
+  "CUFE": "f1e2d3c4b5a697887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
+  "Ambiente": "2",
+  "FechaValidacionDian": "2026-11-08 11:02:10 (UTC-5)",
+  "ResolucionTexto": ""
+}

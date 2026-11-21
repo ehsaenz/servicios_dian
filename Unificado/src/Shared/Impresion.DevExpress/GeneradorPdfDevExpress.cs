@@ -7,10 +7,12 @@ namespace DIAN.Impresion.DevExpress;
 /// </summary>
 public sealed class GeneradorPdfDevExpress : IGeneradorPdf
 {
-    // Una plantilla por tipo de documento de la DIAN. Las de nota crédito y débito aún no existen.
+    // Una plantilla por tipo de documento de la DIAN.
     private static readonly Dictionary<string, string> Plantillas = new()
     {
-        ["01"] = "FacturaVentaElectronica0.repx"
+        ["01"] = "FacturaVentaElectronica0.repx",
+        ["91"] = "NotaElectronica0.repx",
+        ["92"] = "NotaElectronica0.repx"
     };
 
     private readonly string _carpetaPlantillas;
