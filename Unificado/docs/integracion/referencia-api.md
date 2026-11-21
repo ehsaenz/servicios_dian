@@ -117,6 +117,35 @@ Recibe un documento. Lo valida, traduce y firma antes de responder; un fallo de 
 
 Importante: **202 no significa aprobado.** Significa "recibido, firmado y en cola hacia la DIAN".
 
+Ejemplo de respuesta `HTTP 202 Accepted` recién recibido (con `Documentos:EnvioEnSegundoPlano = true`):
+
+```json
+{
+  "Secuencia": 1,
+  "Numero": "SETP990001001",
+  "TipoDocDian": "01",
+  "TipoDocErp": "FV",
+  "Matricula": "00001",
+  "Estado": "Recibido",
+  "CUFE": "3f0c...(96 caracteres hexadecimales)...a91b",
+  "Mensaje": "",
+  "Errores": [],
+  "Habilitacion": true,
+  "Pdf": false,
+  "PdfMensaje": "",
+  "CorreoEnviado": false,
+  "CorreoDestino": "",
+  "WebhookPendiente": false,
+  "WebhookIntentos": 0,
+  "WebhookError": "",
+  "WebhookEntregado": null,
+  "Intentos": 0,
+  "FechaRecibido": "2026-11-16T15:04:09.12Z",
+  "FechaActualizado": "2026-11-16T15:04:09.12Z",
+  "SecuenciaCambio": 1
+}
+```
+
 ### `GET /api/documento/estado/{numero}`
 
 El registro actual del documento.
