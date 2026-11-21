@@ -39,10 +39,10 @@ Cambios del 2026-11-20 (sin commitear, para revisión):
 
 - Candado por documento en `DocumentoServicio` (`Agregar` y `Procesar`, por cliente y número). Evita el doble envío a la DIAN entre el envío inicial, el reintento manual y el mantenimiento. Es por proceso: con varias instancias haría falta un candado distribuido.
 - Índice en memoria en `AlmacenDocumentos`: los JSON se leen una vez y cada `Guardar` actualiza el índice y el archivo. `CambiosDesde` y `Todos` ya no leen el disco en cada llamada. Un solo proceso escribe, como antes.
-- Lista de producción por módulo: el ítem de facturación se exige solo si el cliente tiene software de facturación (o si no tiene ningún software registrado). Cada módulo registrado (nómina, RADIAN, documento soporte, POS) aparece con su software y un set de pruebas en «Aviso» (no bloquea; la lista aún no verifica ese set). Todo software registrado debe estar en producción.
+- Lista de producción por bloque (facturación, POS, nómina, RADIAN, documento soporte): cada bloque se habilita por separado y tiene su propio set de pruebas. Un bloque en habilitación no bloquea. Un bloque en producción queda «Pendiente» mientras su set no esté verificado: la lista todavía no lee la aprobación de los sets de POS, nómina, RADIAN ni documento soporte. El ítem de facturación se exige solo si el cliente tiene software de facturación.
 - Pruebas: `Pos.Pruebas` 80 correctas (incluida la nueva del índice) y 8 omitidas; `Admin.Pruebas` 42 correctas y 11 omitidas (MySQL). Se corrigieron fixtures de logo que eran un PNG y un JPG falsos y que ahora se rechazan por estructura.
-- Correcciones tras la revisión de Antigravity: el almacén de documentos se comparte por carpeta de cliente (`AlmacenDocumentos.Para`), así el índice y el candado son los mismos en todas las peticiones; el webhook del mantenimiento y el PDF se ejecutan dentro del candado del documento; los sets de POS, documento soporte, nómina y RADIAN pasan a «Aviso» en lugar de bloquear la producción.
-- Pendiente: verificar el set de pruebas de POS, documento soporte y nómina desde la lista. Requiere llevar sus documentos a un lugar que la lista pueda leer, y confirmar las reglas de la DIAN por módulo. Sin eso, esos clientes no pueden pasar a producción.
+- Correcciones tras la revisión de Antigravity: el almacén de documentos se comparte por carpeta de cliente (`AlmacenDocumentos.Para`), así el índice y el candado son los mismos en todas las peticiones; el webhook del mantenimiento y el PDF se ejecutan dentro del candado del documento; los sets de otros bloques dejan de bloquear de forma permanente (ver la lista por bloque, más abajo).
+- Pendiente: implementar la verificación del set de pruebas de POS, nómina, RADIAN y documento soporte en la lista. Requiere leer la aprobación de cada bloque desde sus registros y confirmar las reglas de la DIAN por bloque. Hasta entonces, un bloque en producción no puede pasar la lista.
 
 ## Servidor `quanty-lab`
 
@@ -56,6 +56,10 @@ Cambios del 2026-11-20 (sin commitear, para revisión):
 - **No verificado:** que `~/factura-ok.json` (contiene la clave técnica del set) se haya borrado en `quanty-lab`.
 
 ## Pendientes
+
+Después del 28 de noviembre de 2026:
+
+- Renombrar `Pos.Api` a `Dian.Api`, porque la API atiende a todos los bloques (FE, POS, nómina, RADIAN, documento soporte), no solo al POS. Toca el servicio `dian-pos-api` en systemd, la configuración de nginx, los scripts de despliegue, la documentación y los proyectos de prueba. Va como cambio aparte y con confirmación previa; no se hace antes de cerrar la lista por bloque.
 
 Seguridad:
 
