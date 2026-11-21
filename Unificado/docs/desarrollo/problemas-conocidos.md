@@ -9,7 +9,7 @@ Lista viva de lo que **no está hecho o no está verificado**. Cada punto sale d
 | # | Pendiente | Detalle |
 |---|---|---|
 | 1 | **Correo al adquiriente sin implementación** | `IEnviadorCorreo` existe, pero `Program.CrearSalidas` no registra ninguna: no sale ningún correo. Falta el adaptador del servicio **EmailAPI**; solo se conoce `IMiddleEmail.EnviarMail(parametros)` y `GetTracking`. Hace falta el contrato completo. |
-| 2 | **Contenedor `AttachedDocument`** | El servicio no genera el contenedor; el correo (cuando exista) adjuntaría XML, respuesta de la DIAN y PDF por separado. `GeneradorContenedor` existe en `Documentos`. |
+| 2 | **Contenedor `AttachedDocument`** | No requerido: el ERP no necesita el contenedor ni el XML (decisión de 2026-11-21). El correo adjunta XML, respuesta de la DIAN y PDF por separado. `GeneradorContenedor` existe en `Documentos` y no se usa. |
 | 3 | **Plantillas de NC, ND y documento soporte** | Solo hay plantilla de factura (`01`). NC y ND quedan aprobadas con `PdfMensaje` "no hay plantilla". En el modelo de impresión de las notas la resolución sale vacía. |
 | 4 | **Almacén de documentos en archivos** | `Datos:Carpeta`, un solo servidor y **un solo proceso escribe**. Pasarlo a MySQL (y soportar varias instancias) está pendiente. |
 | 5 | **Validación de matrícula/sucursal** | La API anterior valida la licencia por matrícula mercantil; la nueva imprime con el perfil de la sucursal que coincida, o con el del cliente si no hay. Propuesta sin decidir: si el cliente tiene sucursales, rechazar un documento cuya matrícula no corresponda a ninguna. |
