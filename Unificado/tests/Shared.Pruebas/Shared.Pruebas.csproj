@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\Shared\Impresion\Impresion.csproj" />
     <ProjectReference Include="..\..\src\Shared\ModeloDian\ModeloDian.csproj" />
     <ProjectReference Include="..\..\src\Shared\Traductor\Traductor.csproj" />
+    <ProjectReference Include="..\..\tools\Anonimizador\Anonimizador.csproj" />
   </ItemGroup>
 
 </Project>

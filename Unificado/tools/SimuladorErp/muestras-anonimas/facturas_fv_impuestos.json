@@ -1,0 +1,110 @@
+[
+  {
+    "Id": 209,
+    "ItemSalId": 603,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 16806.72,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 3193.28,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 210,
+    "ItemSalId": 604,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 11974.79,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 2275.21,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 211,
+    "ItemSalId": 605,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 10378.15,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 1971.85,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 217,
+    "ItemSalId": 619,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 16806.72,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 3193.28,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 269,
+    "ItemSalId": 1005,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 67226.89,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 12773.11,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 308,
+    "ItemSalId": 1034,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 33613.45,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 6386.55,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 309,
+    "ItemSalId": 1035,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 22689.08,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 4310.92,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 315,
+    "ItemSalId": 1043,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 36974.79,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 7025.21,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  },
+  {
+    "Id": 320,
+    "ItemSalId": 1047,
+    "ImpuestoId": "01",
+    "TarifaId": "0132",
+    "BaseGravada": 544537.82,
+    "BaseNoGravada": 0.0,
+    "TarifaAplicada": 0.19,
+    "ValorImpuesto": 103462.18,
+    "IncluidoEnPrecio": 1,
+    "OrdenAplicacion": 1
+  }
+]

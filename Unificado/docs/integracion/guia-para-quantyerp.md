@@ -45,14 +45,22 @@ URL base hoy: `https://services.sistemas360.com:47125`. La confirma el operador.
 
 Reenviar el mismo `Numero` es **idempotente**: si ya está `Recibido` o `Aprobado`, devuelve el existente sin volver a enviar a la DIAN. Si está `Rechazado` o `Error`, se reprocesa con el contenido nuevo.
 
-### 3.2 Reglas que hoy bloquean la emisión
+### 3.2 Campos y reglas de `DocumentoDian` frente a QuantyERP
 
-| Regla | Qué hacer en QuantyERP | Estado |
-|---|---|---|
-| **Notas 91 y 92** deben traer la referencia al documento original con la clave `documento_ref` (`DocumentoRef`): `Numero` y `CUFE` del documento original | Enviar `documento_ref`. El nombre `DocumentoReferencia` no se acepta y responde 400 | **Bloqueante** |
-| **Resolución** `Resolucion.NumeroResolucion` debe existir y ser **numérico** | Validar antes de enviar. Si falta o no es numérico, responde 400 | **Bloqueante** |
-| **Impuesto INC** se identifica con el código **`04`** | El ERP manda `14` en algunas consultas. Mapear `14` → `04` o acordar con SISTEMAS 360 que la API lo acepte | **Decisión pendiente** |
-| Tipos de documento admitidos en `/api/documento/*`: **01, 91, 92** | No enviar `02` (exportación) ni `03` (tarifa 0) por esta ruta | Hoy no aparecen en MARLIT |
+Qué exige la API en `POST /api/documento/agregar` ([`TraductorFactura.cs`](../../src/Shared/Traductor/TraductorFactura.cs) y [`TraductorNota.cs`](../../src/Shared/Traductor/TraductorNota.cs)), qué envía u omite hoy `QuantyERP.DianWorker` (`DianRequestJsonBuilder.cs` y `DianDocumentDataService.cs`), y qué se observó en las muestras de desarrollo (`SETP-990000001`..`027`):
+
+| Campo `DocumentoDian` | Lo que exige la API | Qué hace o omite QuantyERP hoy | Estado |
+|---|---|---|---|
+| `DocumentoRef` (`Numero`, `CUFE`, `Fecha`, `Concepto`) | Obligatorios `DocumentoRef.Numero` y `DocumentoRef.CUFE` en notas `91` y `92` (sin ellos responde **400**). Nota: la clave JSON exacta en `DocumentoDian` es **`DocumentoRef`**, no `documento_ref` ni `DocumentoReferencia`. | **No lo envía.** `DianRequestJsonBuilder` no llama `ConDocumentoReferencia` y `SQL_DOCUMENTO_SALIDA` no consulta `dian_envios.Cufe` de la factura origen (solo llena `OrdenRef` con `DocRefNumero`). | **Bloqueante** en `91`/`92` |
+| `Resolucion.NumeroResolucion` (y `Prefijo`, rango, fechas) | Obligatorio y numérico (`long.Parse`) tanto en `01` como en notas `91` y `92`. En `01` exige además `Resolucion.ClaveTecnica`. | En **`91`/`92` no lo envía**: `AgregarResolucionAsync` hace `return` sin consultar resolución. En **`01`** consulta por `r.Activa`, `r.TipDoc` y `r.Sucursal`; en las 27 FV de muestra `Puesto = 0` deja `Sucursal` nulo y `resoluciones` sin `ClaveTecnica` en la exportación. | **Bloqueante** en `91`/`92` (y en `01` sin sucursal/`ClaveTecnica`) |
+| `Emisor` y `Receptor` (`LocacionPrincipal.CodigoMunicipio`, `Direccion`) | Exige `CodigoMunicipio` DANE de 5 dígitos y `LocacionPrincipal` en ambos (sin él: **400**). `Emisor` se resuelve por `CodigoTienda` y usa `MatriculaMercantil` para el logo. | `SQL_DOCUMENTO_SALIDA` saca `CodigoTienda` vía `puestos -> sucursales`; cuando `Puesto = 0` (todas las 27 FV de muestra), `CodigoTienda` sale vacío (`""`). En `terceros_clientes` de muestra el cliente de `SETP-990000001` también tiene `CodMunicipio` vacío. | **Bloqueante** si falta `Puesto`/municipio DANE |
+| `Receptor.TipoIdDian` | Tipo de documento DIAN (`31` NIT, `13` CC, `22` CE, `41` pasaporte, etc.; default `31` si falta). | `DianDocumentBuilder` fija `"13"` para toda persona natural y `"31"` para jurídica sin leer `contribuyentes.TipoDocu` (ni siquiera se selecciona en `SQL_RECEPTOR`). | **Brecha media** (CE/pasaportes salen como `"13"`) |
+| `Emisor` / `Receptor` (`TipoPersona`, `IdTipoPersona`, `DV`, nombres) | `TipoPersona` en mayúsculas (`"JURIDICA"` fija `IdTipoPersona = "1"` con `RazonSocial`; `"NATURAL"` fija `"2"` con `PrimerNombre`/`PrimerApellido`). | Enviado mediante `UCASE(c.Persona)` y `DianDocumentBuilder`. Requiere que `contribuyentes` exista y tenga esos campos completos (la exportación de muestras solo incluye `terceros`). | **Compatible** (depende de datos en BD) |
+| `Numero` y `FechaHoraDoc` | `Numero` no vacío con `Resolucion.Prefijo` (llave de idempotencia); `FechaHoraDoc` hora Colombia. | `NormalizeNumero` quita guiones (`SETP-990000001` → `SETP990000001`). En `SETP-990000001` de muestra el `Prefijo` de resolución coincide (`SETP`). | **Compatible** |
+| `Items[]` (`Cant`, `ValorUnit`, `DtoDir`, `Detalle`, `Codigo`/`Referencia`, `Excluido`) | Mínimo 1 ítem. La API **no recalcula ni totaliza** por sí misma: usa `Cant`, `ValorUnit`, `DtoDir`, `BaseGral` e `impuestos[]`/`retenciones[]` del modelo. | `SQL_ITEMS_SALIDA` y `SQL_IMPUESTOS_SALIDA` filtran por `i.DocRelacionado = s.IdDocSal`. **Desfase detectado en muestra:** `SETP-990000001` tiene `0` líneas y `0` impuestos, y en `facturas_fv_lineas` las líneas existentes referencian `LPAD(s.ID, 10, '0')` (17 FV, solo 6 con impuestos materializados) en vez de `s.IdDocSal`. | **Bloqueante en pruebas** si `IdDocSal` ≠ `DocRelacionado` o faltan ítems/impuestos |
+| `Items[].impuestos[].ID` | Códigos DIAN de `TipoImpuesto`: **`04`** para INC (`14` lanza excepción → **400**). | `SQL_IMPUESTOS_SALIDA` pasa `isi.ImpuestoId` directo y contempla `WHEN '14' THEN 'INC'`. La BD MARLIT usa `'04'`, no `'14'`. | **Decisión pendiente** (mapear `'14'` → `'04'` o aceptarlo en API) |
+| `Items[].retenciones[]` y `ReadyDevTime` | Lee `Items[].retenciones[]` (`05`, `06`, `07`) directamente sin ejecutar `Totalizar()`. | `DianRequestJsonBuilder` no consulta `itemssalidas_retenciones`: depende de `DocumentoDian.Totalizar()` con `ModeloDian.ClaveDesarrollo` (`SecretosLocales`) para poblar `retenciones[]`. | **Riesgo** si el worker corre sin esa clave |
+| `TipoDocDian` (`02` exportación, `03` contingencia) | `/api/documento/*` solo admite **`01`, `91` y `92`** (`02` y `03` responden **400**). | `MapTipoDocDian` mapea `"EX"` → `"02"` y `"TG"` → `"03"`, pero esos comprobantes no existen en MARLIT ni tienen `CREAR_ENVIO_DIAN`. | **No bloquea hoy** |
 
 Los campos completos de `DocumentoDian` están en [documentos-soportados.md](documentos-soportados.md) y los ejemplos en [ejemplos/](ejemplos/README.md).
 
@@ -146,7 +154,7 @@ Detalle en [referencia-api.md](referencia-api.md).
 
 - [ ] Reemplazar el login legado por la cabecera `x-api-key` y forzar HTTPS.
 - [ ] Leer la respuesta 202 de `agregar` y consultar después con `cambios`.
-- [ ] Enviar `documento_ref` (Numero y CUFE) en las notas 91 y 92.
+- [ ] Enviar `DocumentoRef` (`Numero` y `CUFE`) en las notas 91 y 92 (además de `Resolucion.NumeroResolucion` y `Prefijo`).
 - [ ] Validar que `NumeroResolucion` sea numérico antes de enviar.
 - [ ] Resolver el código de INC (`04` frente a `14`).
 - [ ] Probar `GET /salud` y `GET /api/Servicio/Quien` con la clave de habilitación.
@@ -158,7 +166,7 @@ Detalle en [referencia-api.md](referencia-api.md).
 
 ## 11. Decisiones abiertas (responsable: SISTEMAS 360 y QuantyERP)
 
-1. ¿La API acepta `DocumentoReferencia` además de `documento_ref`, o el ERP cambia? (Recomendación: el ERP cambia.)
+1. ¿La API acepta `DocumentoReferencia` además de `DocumentoRef`, o el ERP cambia? (Recomendación: el ERP cambia.)
 2. ¿INC se envía como `04` (recomendado) o la API acepta `14`?
 3. ¿La nota 95 de documento soporte también se expone en `EnviarDE`?
 4. ¿Cuándo se renueva la resolución de documento soporte?

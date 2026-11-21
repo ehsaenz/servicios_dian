@@ -1,0 +1,28 @@
+[
+  {
+    "ID": 1,
+    "Sucursal": 1,
+    "TipDoc": "FV",
+    "NumeroRes": "18760001001",
+    "FechaRes": "2019-01-19T00:00:00",
+    "FechaVenc": "2030-01-19T00:00:00",
+    "Prefijo": "SETP",
+    "ConsecutivoIni": 990000000,
+    "ConsecutivoFin": 995000000,
+    "Consecutivo": 990000027,
+    "Activa": -1
+  },
+  {
+    "ID": 3,
+    "Sucursal": 1,
+    "TipDoc": "DSNO",
+    "NumeroRes": "18760001002",
+    "FechaRes": "2025-09-13T00:00:00",
+    "FechaVenc": "2026-09-13T00:00:00",
+    "Prefijo": "EJ01",
+    "ConsecutivoIni": 1,
+    "ConsecutivoFin": 1000,
+    "Consecutivo": 1,
+    "Activa": -1
+  }
+]
