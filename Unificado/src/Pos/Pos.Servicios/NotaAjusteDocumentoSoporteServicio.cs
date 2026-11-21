@@ -106,6 +106,12 @@ namespace DIAN.Pos.Servicios
             _registro.LogInformation("Enviando {Documento} a {Ambiente}", idDoc, Habilitacion ? "habilitación" : "producción");
             var respuesta = _fabrica.Crear(Habilitacion ? AmbienteServicio.PRUEBAS : AmbienteServicio.PRODUCCION, _certificados.Obtener(_tenant)).EnviarDocumento(firmado);
 
+            // Igual que el documento soporte: el ApplicationResponse queda en disco para contar las notas aprobadas.
+            if (respuesta.XmlBase64Bytes != null)
+            {
+                File.WriteAllBytes(Path.Combine(_carpetaCliente, "XML", idDoc + "-appresponse.xml"), respuesta.XmlBase64Bytes);
+            }
+
             var resultado = new ResponseDian
             {
                 statusCode = respuesta.StatusCode,
@@ -139,6 +145,26 @@ namespace DIAN.Pos.Servicios
                 throw new ArgumentException("El adquiriente de la nota debe ser el NIT configurado para este cliente.");
 
             de.AddDatosSoftware(_tenant.Emisor.Nit, software.Identificador, software.PIN);
+            // Igual que el documento soporte original: si no viene el proveedor, se toma del emisor.
+            if (de.Proveedor == null || string.IsNullOrEmpty(de.Proveedor.Identificacion))
+            {
+                de.Proveedor = new Proveedor
+                {
+                    Identificacion = de.Emisor.Identificacion,
+                    Persona = de.Emisor.Persona,
+                    RazonSocial = de.Emisor.RazonSocial,
+                    TipoIdentificacion = TipoIdentificacion.GetFromCodigo("31"),
+                    CorreoElectronico = de.Emisor.CorreoElectronico,
+                    TipoPersona = de.Emisor.TipoPersona,
+                    DireccionFisica = de.Emisor.DireccionFiscal,
+                    NumeroTelefonico = de.Emisor.NumeroTelefonico,
+                    RegimenFiscal = de.Emisor.RegimenFiscal,
+                    ResponsabilidadTributaria = de.Emisor.ResponsabilidadTributaria,
+                    Nombre = de.Emisor.DatosComerciales?.NombreComercial ?? de.Emisor.RazonSocial
+                };
+            }
+            de.Proveedor.TipoIdentificacion = TipoIdentificacion.GetFromCodigo("31");
+
             var ambiente = Habilitacion ? AmbienteDestino.PRUEBAS : AmbienteDestino.PRODUCCION;
             var nota = CrearGenerador(de, ambiente, software.PIN).Obtener();
             var xml = nota.SerializeXmlDocument().ToXmlString();
