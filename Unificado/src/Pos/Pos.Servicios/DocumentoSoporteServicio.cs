@@ -140,10 +140,9 @@ namespace DIAN.Pos.Servicios
         {
             var enviador = _fabrica.Crear(AmbienteServicio, _certificados.Obtener(_tenant));
 
-            // En habilitación el identificador es el ZipKey del envío; en producción, el UUID del documento.
-            var respuesta = Habilitacion
-                ? enviador.ConsultarDocumentos(trackId).FirstOrDefault()
-                : enviador.ConsultarDocumento(trackId);
+            // El envío normal (SendBillSync) es el mismo en habilitación y producción: se consulta por el UUID (CUDS) con GetStatus.
+            // El ZipKey solo existe en el envío al set, que se consulta en EnviadorSetPruebas con GetStatusZip.
+            var respuesta = enviador.ConsultarDocumento(trackId);
 
             if (respuesta == null)
             {

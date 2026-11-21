@@ -110,7 +110,8 @@ namespace DIAN.Pos.Servicios
         {
             var resp = new ResponseDian();
 
-            if (_habilitacion && !porCude)
+            // Solo los documentos enviados al set (con TestSetId) tienen ZipKey; el resto se consulta por su CUDE con GetStatus.
+            if (_habilitacion && !porCude && !string.IsNullOrEmpty(_software.TestSetId))
             {
                 var dian = _enviador.ConsultarDocumentos(trackId).FirstOrDefault()
                            ?? throw new InvalidOperationException("La DIAN no devolvió información para ese identificador.");
