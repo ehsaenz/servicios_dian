@@ -43,6 +43,7 @@ Antes de pedir el paso a producción, recorra la [lista de verificación](lista-
 | [estados-y-errores.md](estados-y-errores.md) | Ciclo de vida, códigos de la DIAN, errores de validación y qué hacer |
 | [pdf-y-correo.md](pdf-y-correo.md) | PDF oficial, plantillas, logo y correo |
 | [webhook.md](webhook.md) | Formato exacto del aviso, firma HMAC, reintentos, idempotencia |
+| [guia-para-quantyerp.md](guia-para-quantyerp.md) | Guía para el equipo de QuantyERP: qué cambiar, reglas bloqueantes, set de pruebas y decisiones abiertas |
 | [ambientes.md](ambientes.md) | Habilitación y producción, tiempos de espera, set de pruebas |
 | [set-de-pruebas-produccion.md](set-de-pruebas-produccion.md) | Paso del ERP para validar el set antes de producción (encabezado `X-Envio-Set`) |
 | [lista-de-verificacion.md](lista-de-verificacion.md) | Checklist de certificación del integrador |
