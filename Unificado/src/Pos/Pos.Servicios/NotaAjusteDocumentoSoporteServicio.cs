@@ -146,7 +146,7 @@ namespace DIAN.Pos.Servicios
 
             de.AddDatosSoftware(_tenant.Emisor.Nit, software.Identificador, software.PIN);
             // Igual que el documento soporte original: si no viene el proveedor, se toma del emisor.
-            if (de.Proveedor == null || string.IsNullOrEmpty(de.Proveedor.Identificacion))
+            if ((de.Proveedor == null || string.IsNullOrEmpty(de.Proveedor.Identificacion)) && de.Emisor != null)
             {
                 de.Proveedor = new Proveedor
                 {

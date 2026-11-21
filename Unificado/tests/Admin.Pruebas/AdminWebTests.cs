@@ -579,6 +579,7 @@ public class ListaProduccionTests
             File.WriteAllText(Path.Combine(cliente, "XML", "DETP-POS1-appresponse.xml"), AppResponse("02"));
             File.WriteAllText(Path.Combine(cliente, "XML", "NATP-NA1-appresponse.xml"), AppResponse("02"));
             File.WriteAllText(Path.Combine(cliente, "XML", "DSNO-DS1-appresponse.xml"), AppResponse("02"));
+            File.WriteAllText(Path.Combine(cliente, "XML", "NSDS-NA1-appresponse.xml"), AppResponse("02"));
             File.WriteAllText(Path.Combine(cliente, "XML", "DSNO-RECH-appresponse.xml"), AppResponse("04"));
             File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "102_N1.json"), "{\"TipoDocumento\":102,\"Estado\":5,\"StatusCode\":\"00\"}");
             File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "102_RECH.json"), "{\"TipoDocumento\":102,\"Estado\":3,\"StatusCode\":\"00\"}");
@@ -594,6 +595,7 @@ public class ListaProduccionTests
             Assert.Equal(1, sets.TiquetesPosAprobados);
             Assert.Equal(1, sets.NotasAjustePosAprobadas);
             Assert.Equal(1, sets.DocumentosSoporteAprobados);
+            Assert.Equal(1, sets.NotasAjusteDocumentoSoporteAprobadas);
             Assert.Equal(1, sets.NominasIndividualesAprobadas);
             Assert.Equal(1, sets.NominasAjusteAprobadas);
             Assert.Equal(1, sets.EventosRadianAprobados);

@@ -53,6 +53,7 @@ namespace DIAN.Admin.Web
         public int NotasAjustePosAprobadas { get; set; }
         public bool SetPosAceptado { get; set; }
         public int DocumentosSoporteAprobados { get; set; }
+        public int NotasAjusteDocumentoSoporteAprobadas { get; set; }
         public int NominasIndividualesAprobadas { get; set; }
         public int NominasAjusteAprobadas { get; set; }
         public bool SetNominaAceptado { get; set; }
@@ -132,6 +133,7 @@ namespace DIAN.Admin.Web
                 evidencia.TiquetesPosAprobados = ContarAppResponsesAprobados(xml, "DETP-*-appresponse.xml");
                 evidencia.NotasAjustePosAprobadas = ContarAppResponsesAprobados(xml, "NATP-*-appresponse.xml");
                 evidencia.DocumentosSoporteAprobados = ContarAppResponsesAprobados(xml, "DSNO-*-appresponse.xml");
+                evidencia.NotasAjusteDocumentoSoporteAprobadas = ContarAppResponsesAprobados(xml, "NSDS-*-appresponse.xml");
                 foreach (var archivo in Directory.GetFiles(xml, "*-dian.json"))
                 {
                     var reg = LeerJson<RegistroNominaVista>(archivo);

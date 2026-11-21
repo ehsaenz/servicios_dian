@@ -135,7 +135,7 @@ namespace DIAN.Admin.Web
                 }
                 case TipoSoftware.DocumentoSoporte:
                 {
-                    var resumen = $"Aprobados en habilitación (informativo): {sets.DocumentosSoporteAprobados} documento(s) soporte.";
+                    var resumen = $"Aprobados en habilitación (informativo): {sets.DocumentosSoporteAprobados} documento(s) soporte, {sets.NotasAjusteDocumentoSoporteAprobadas} nota(s) de ajuste.";
                     return EvaluarEstadoSet(titulo, bloquea, setBloque, resumen);
                 }
                 case TipoSoftware.NominaElectronica:

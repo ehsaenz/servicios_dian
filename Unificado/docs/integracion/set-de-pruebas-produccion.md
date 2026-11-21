@@ -10,7 +10,7 @@ Todas aceptan el mismo cuerpo JSON habitual junto con el encabezado `X-Envio-Set
 |---|---|---|
 | Facturación electrónica (`01`, `91`, `92`) | `POST /api/documento/agregar` | `set-facturacion.json` |
 | POS (`20` tiquete, `94` nota de ajuste) | `POST /api/DocumentoElectronico/EnviarDE` (o `EnviarDEJson`) | `set-pos.json` |
-| Documento soporte (`05`) | `POST /api/DocumentoSoporte/EnviarDSNO` o `EnviarDE` (`05`) | `set-ds.json` |
+| Documento soporte (`05`, nota de ajuste `95`) | `POST /api/DocumentoSoporte/EnviarDSNO` (y `EnviarDE` para `05`) | `set-ds.json` |
 | Nómina electrónica (`102`, `103`) | `POST /api/v1/Nomina/EnviarNE` | `set-nomina.json` |
 | Eventos RADIAN (`030`..`033`) | `POST /api/v1/Eventos/{accion}` | `set-radian.json` |
 
