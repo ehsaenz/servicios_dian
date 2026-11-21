@@ -59,6 +59,11 @@ namespace DIAN.Pos.Api.Controllers
                 {
                     return BadRequest(ex.Message);
                 }
+                catch (Exception ex)
+                {
+                    _registro.LogError(ex, "Error en el envío al set de pruebas");
+                    return StatusCode(502, "No se pudo enviar al set de pruebas: " + ex.Message);
+                }
             }
 
             DocumentoRegistro registro;

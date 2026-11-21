@@ -22,7 +22,7 @@ El estado del set queda en `set-facturacion.json` de la carpeta del cliente. El 
 
 ## Pendiente
 
-POS (`/api/documento-equivalente`), nómina, documento soporte y eventos RADIAN todavía no tienen el encabezado de set. Se añadirán siguiendo el mismo contrato.
+Todavía no tienen el encabezado de set: POS (`/api/DocumentoElectronico/EnviarDE`), documento soporte (`/api/DocumentoSoporte/EnviarDSNO`), nómina (`/api/v1/Nomina/EnviarNE`) y eventos RADIAN (`/api/v1/Eventos/{accion}`). Se añadirán siguiendo el mismo contrato.
 
 ## Consecutivos
 
