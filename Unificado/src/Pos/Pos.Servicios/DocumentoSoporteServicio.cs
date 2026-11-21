@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using DIAN.Pos.Servicios.Documentos;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
 using eFacturacionColombia_NETCore.Documentos.Extensiones;
@@ -27,6 +28,8 @@ namespace DIAN.Pos.Servicios
         private readonly string _carpetaDatos;
         private readonly ILogger _registro;
 
+        public TimeSpan EsperaSet { get; set; } = TimeSpan.FromSeconds(5);
+
         public DocumentoSoporteServicio(TenantConfig tenant, CertificadoCache certificados, IFabricaEnviadorDian fabrica, string carpetaDatos, ILogger registro)
         {
             _tenant = tenant;
@@ -45,6 +48,40 @@ namespace DIAN.Pos.Servicios
             var software = _tenant.ObtenerSoftware(TipoSoftware.DocumentoSoporte)
                            ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_SOPORTE no están bien configurados");
 
+            var firmado = Firmar(ds, software, out var factura, out var xml);
+            var idDoc = "DSNO-" + Nombre(ds.Numero);
+
+            Directory.CreateDirectory(Path.Combine(_carpetaDatos, "XML"));
+            File.WriteAllText(Path.Combine(_carpetaDatos, "XML", idDoc + "-unsigned.xml"), xml);
+            File.WriteAllBytes(Path.Combine(_carpetaDatos, "XML", idDoc + ".xml"), firmado);
+
+            _registro.LogInformation("Enviando {Documento} a {Ambiente}", idDoc, Habilitacion ? "habilitación" : "producción");
+
+            var respuesta = _fabrica.Crear(AmbienteServicio, _certificados.Obtener(_tenant)).EnviarDocumento(firmado);
+            var resultado = Convertir(respuesta, idDoc);
+            resultado.UUID = factura.UUID?.Value ?? string.Empty;
+            return resultado;
+        }
+
+        /// <summary>
+        /// Envío al set de pruebas de documento soporte (solo habilitación, con TestSetId): firma el documento y lo envía
+        /// por <c>EnviarSetPruebas</c> sin guardar el XML ni generar idempotencia local. Persiste <c>set-ds.json</c>.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(MetaDatosDE ds)
+        {
+            if (!Habilitacion) throw new InvalidOperationException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = _tenant.ObtenerSoftware(TipoSoftware.DocumentoSoporte)
+                           ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_SOPORTE no están bien configurados");
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento soporte no tiene TestSetId (identificador del set de pruebas).");
+            if (ds == null || string.IsNullOrWhiteSpace(ds.Numero)) throw new ArgumentException("El documento soporte no trae número.");
+
+            var firmado = Firmar(ds, software, out _, out _);
+            var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, ds.Numero, _carpetaDatos, "set-ds.json", EsperaSet);
+        }
+
+        private byte[] Firmar(MetaDatosDE ds, SoftwareConfig software, out InvoiceType factura, out string xml)
+        {
             if (ds.Adquiriente == null || ds.Adquiriente.Identificacion != _tenant.Emisor.Nit)
             {
                 throw new ArgumentException($"Este servicio no puede enviar Documentos Soporte para el adquiriente con NIT {ds.Adquiriente?.Identificacion}");
@@ -92,23 +129,11 @@ namespace DIAN.Pos.Servicios
                 .AsignarCUDS(software.PIN)
                 .ConPeriodoFacturacion(ds.Periodo);
 
-            var factura = generador.Obtener();
-            var xml = factura.SerializeXmlDocument().ToXmlString();
-            var idDoc = "DSNO-" + Nombre(ds.Numero);
-
-            Directory.CreateDirectory(Path.Combine(_carpetaDatos, "XML"));
-            File.WriteAllText(Path.Combine(_carpetaDatos, "XML", idDoc + "-unsigned.xml"), xml);
+            factura = generador.Obtener();
+            xml = factura.SerializeXmlDocument().ToXmlString();
 
             var firma = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) };
-            var firmado = firma.FirmarDocumentoSoporte(xml, DateTimeHelper.GetColombianDate());
-            File.WriteAllBytes(Path.Combine(_carpetaDatos, "XML", idDoc + ".xml"), firmado);
-
-            _registro.LogInformation("Enviando {Documento} a {Ambiente}", idDoc, Habilitacion ? "habilitación" : "producción");
-
-            var respuesta = _fabrica.Crear(AmbienteServicio, _certificados.Obtener(_tenant)).EnviarDocumento(firmado);
-            var resultado = Convertir(respuesta, idDoc);
-            resultado.UUID = factura.UUID?.Value ?? string.Empty;
-            return resultado;
+            return firma.FirmarDocumentoSoporte(xml, DateTimeHelper.GetColombianDate());
         }
 
         public ResponseDian Consultar(string trackId)

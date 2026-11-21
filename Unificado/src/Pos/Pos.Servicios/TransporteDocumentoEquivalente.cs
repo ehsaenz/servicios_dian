@@ -24,6 +24,8 @@ namespace DIAN.Pos.Servicios
             _xml = Path.Combine(carpetaDatos, Nombres.Seguro(idCliente), "XML");
         }
 
+        public string CarpetaCliente => Path.GetDirectoryName(_xml)!;
+
         public string Xml(string idDoc) => Path.Combine(_xml, Nombres.Seguro(idDoc) + ".xml");
 
         public string XmlSinFirmar(string idDoc) => Xml(idDoc + "-unsigned");

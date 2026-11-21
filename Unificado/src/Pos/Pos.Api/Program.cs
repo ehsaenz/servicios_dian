@@ -74,11 +74,18 @@ builder.Services.AddSingleton(sp =>
     };
 });
 
-builder.Services.AddSingleton(sp => new ServiciosNomina(
-    sp.GetRequiredService<CertificadoCache>(),
-    sp.GetRequiredService<IFabricaEnviadorDian>(),
-    sp.GetRequiredService<IConfiguration>()["Datos:Carpeta"] ?? Path.Combine(AppContext.BaseDirectory, "datos"),
-    sp.GetRequiredService<ILoggerFactory>()));
+builder.Services.AddSingleton(sp =>
+{
+    var configuracion = sp.GetRequiredService<IConfiguration>();
+    return new ServiciosNomina(
+        sp.GetRequiredService<CertificadoCache>(),
+        sp.GetRequiredService<IFabricaEnviadorDian>(),
+        configuracion["Datos:Carpeta"] ?? Path.Combine(AppContext.BaseDirectory, "datos"),
+        sp.GetRequiredService<ILoggerFactory>())
+    {
+        EsperaSetPruebas = TimeSpan.FromSeconds(configuracion.GetValue("Dian:EsperaSetSegundos", 5.0))
+    };
+});
 
 // Detrás de un proxy inverso (nginx) con HTTPS: solo se confía en las cabeceras X-Forwarded-* que llegan del propio equipo.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using BasicLibraryExt;
 using DIAN.Pos.Servicios;
+using DIAN.Pos.Servicios.Documentos;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
 using eFacturacionColombia_NETCore.Documentos.Extensiones;
@@ -53,15 +54,19 @@ namespace DIAN.Nomina.Servicios
         private readonly TenantConfig _tenant;
         private readonly CertificadoCache _certificados;
         private readonly IFabricaEnviadorDian _fabrica;
+        private readonly string _carpetaCliente;
         private readonly string _carpeta;
         private readonly ILogger _registro;
+
+        public TimeSpan EsperaSet { get; set; } = TimeSpan.FromSeconds(5);
 
         public EventosRadianServicio(TenantConfig tenant, CertificadoCache certificados, IFabricaEnviadorDian fabrica, string carpetaDatos, ILogger registro)
         {
             _tenant = tenant;
             _certificados = certificados;
             _fabrica = fabrica;
-            _carpeta = Path.Combine(carpetaDatos, AlmacenRegistrosNomina.Seguro(tenant.Id), "radian");
+            _carpetaCliente = Path.Combine(carpetaDatos, AlmacenRegistrosNomina.Seguro(tenant.Id));
+            _carpeta = Path.Combine(_carpetaCliente, "radian");
             _registro = registro;
         }
 
@@ -75,23 +80,89 @@ namespace DIAN.Nomina.Servicios
         public ResponseDian GenerarEvento(EventoRadian evento)
         {
             var software = Software;
-            var respuesta = new ResponseDian();
-
-            if (evento.Codigo == "034")
+            var enviador = _fabrica.Crear(Habilitacion ? AmbienteServicio.PRUEBAS : AmbienteServicio.PRODUCCION, _certificados.Obtener(_tenant));
+            var prep = PrepararYFirmar(evento, software, enviador);
+            if (!string.IsNullOrEmpty(prep.ErrorCodigo))
             {
-                respuesta.statusCode = "109";
-                respuesta.statusMessage = "Opcion en desarrollo";
+                return new ResponseDian { statusCode = prep.ErrorCodigo, statusMessage = prep.ErrorMensaje };
+            }
+
+            Directory.CreateDirectory(Path.Combine(_carpeta, "xml"));
+            // El consecutivo es independiente por tipo de evento (un acuse y un recibo pueden ser ambos EVT1): el código va en el nombre.
+            File.WriteAllBytes(Path.Combine(_carpeta, "xml", AlmacenRegistrosNomina.Seguro(evento.Codigo + "_" + prep.Numero) + ".xml"), prep.Firmado);
+
+            var respuesta = new ResponseDian();
+            DianResponse dian;
+            try
+            {
+                dian = enviador.EnviarEvento(prep.Firmado);
+            }
+            catch (Exception ex)
+            {
+                _registro.LogError(ex, "No se pudo enviar el evento {Numero} a la DIAN", prep.Numero);
+                respuesta.Errors.Add(new Error { Source = ErrorSource.BackEnd, Codigo = ex.HResult.ToString(), Descripcion = ex.Message });
                 return respuesta;
             }
 
-            var enviador = _fabrica.Crear(Habilitacion ? AmbienteServicio.PRUEBAS : AmbienteServicio.PRODUCCION, _certificados.Obtener(_tenant));
+            respuesta.statusCode = dian.StatusCode;
+            respuesta.statusMessage = dian.StatusMessage;
+            respuesta.UUID = prep.UuidReferencia;
+
+            if (dian.StatusCode != RespuestaDian.PROCESADO_CORRECTAMENTE)
+            {
+                respuesta.statusCode = "99";
+                respuesta.statusMessage = dian.StatusDescription;
+                foreach (var texto in dian.ErrorMessage ?? Array.Empty<string>())
+                {
+                    var partes = texto.Split(new[] { ',' }, 2);
+                    respuesta.Errors.Add(new Error
+                    {
+                        Source = ErrorSource.ExternalService,
+                        Codigo = partes[0].Replace("Regla:", "").Trim(),
+                        Descripcion = partes.Length > 1 ? partes[1].Trim() : string.Empty
+                    });
+                }
+            }
+
+            GuardarEvento(prep.Numero, evento, prep.UuidReferencia, dian.StatusCode);
+            return respuesta;
+        }
+
+        /// <summary>
+        /// Envío al set de pruebas de eventos RADIAN (solo habilitación, con TestSetId): firma el evento y lo envía
+        /// por <c>EnviarSetPruebas</c> sin guardar en <c>radian/eventos/</c>. Persiste <c>set-radian.json</c>.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(EventoRadian evento)
+        {
+            if (!Habilitacion) throw new InvalidOperationException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = Software;
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de eventos RADIAN no tiene TestSetId (identificador del set de pruebas).");
+            if (evento == null) throw new ArgumentException("Falta el cuerpo del evento RADIAN.");
+
+            var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
+            var prep = PrepararYFirmar(evento, software, enviador);
+            if (!string.IsNullOrEmpty(prep.ErrorCodigo))
+            {
+                throw new ArgumentException(prep.ErrorMensaje);
+            }
+
+            return EnviadorSetPruebas.Enviar(enviador, prep.Firmado, software.TestSetId, prep.Numero, _carpetaCliente, "set-radian.json", EsperaSet);
+        }
+
+        private (byte[] Firmado, string Numero, string UuidReferencia, string ErrorCodigo, string ErrorMensaje) PrepararYFirmar(
+            EventoRadian evento,
+            SoftwareConfig software,
+            IEnviadorDian enviador)
+        {
+            if (evento.Codigo == "034")
+            {
+                return (null, "", "", "109", "Opcion en desarrollo");
+            }
 
             var xmlFactura = ObtenerFactura(evento.UUID, enviador);
             if (xmlFactura == null)
             {
-                respuesta.statusCode = "199";
-                respuesta.statusMessage = "No fue posible obtener el XML de la factura soliciada";
-                return respuesta;
+                return (null, "", "", "199", "No fue posible obtener el XML de la factura soliciada");
             }
 
             var (referencia, emisor, adquiriente) = LeerFactura(xmlFactura);
@@ -99,9 +170,7 @@ namespace DIAN.Nomina.Servicios
             // Estos eventos los registra quien RECIBE la factura (el adquiriente).
             if (adquiriente.Identificacion != _tenant.Emisor.Nit)
             {
-                respuesta.statusCode = "101";
-                respuesta.statusMessage = $"El evento [{evento.Codigo}] solo se puede generar para facturas en las cuales usted es el [receptor]";
-                return respuesta;
+                return (null, "", "", "101", $"El evento [{evento.Codigo}] solo se puede generar para facturas en las cuales usted es el [receptor]");
             }
 
             var numero = string.IsNullOrWhiteSpace(evento.Numero) ? NuevoConsecutivo(evento.Codigo) : evento.Numero.Trim();
@@ -128,9 +197,7 @@ namespace DIAN.Nomina.Servicios
                 case "032": generador = generador.ParaRecepcionBienes(); break;
                 case "033": generador = generador.ParaAceptacionExpresa(); break;
                 default:
-                    respuesta.statusCode = "101";
-                    respuesta.statusMessage = $"El código de evento {evento.Codigo} no es válido";
-                    return respuesta;
+                    return (null, "", "", "101", $"El código de evento {evento.Codigo} no es válido");
             }
 
             var applicationResponse = generador.AsignarCUDE(software.PIN).Obtener();
@@ -138,44 +205,7 @@ namespace DIAN.Nomina.Servicios
             var firmado = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) }
                 .FirmarEvento(xml, DateTimeHelper.GetColombianDate());
 
-            Directory.CreateDirectory(Path.Combine(_carpeta, "xml"));
-            // El consecutivo es independiente por tipo de evento (un acuse y un recibo pueden ser ambos EVT1): el código va en el nombre.
-            File.WriteAllBytes(Path.Combine(_carpeta, "xml", AlmacenRegistrosNomina.Seguro(evento.Codigo + "_" + numero) + ".xml"), firmado);
-
-            DianResponse dian;
-            try
-            {
-                dian = enviador.EnviarEvento(firmado);
-            }
-            catch (Exception ex)
-            {
-                _registro.LogError(ex, "No se pudo enviar el evento {Numero} a la DIAN", numero);
-                respuesta.Errors.Add(new Error { Source = ErrorSource.BackEnd, Codigo = ex.HResult.ToString(), Descripcion = ex.Message });
-                return respuesta;
-            }
-
-            respuesta.statusCode = dian.StatusCode;
-            respuesta.statusMessage = dian.StatusMessage;
-            respuesta.UUID = referencia.UUID;
-
-            if (dian.StatusCode != RespuestaDian.PROCESADO_CORRECTAMENTE)
-            {
-                respuesta.statusCode = "99";
-                respuesta.statusMessage = dian.StatusDescription;
-                foreach (var texto in dian.ErrorMessage ?? Array.Empty<string>())
-                {
-                    var partes = texto.Split(new[] { ',' }, 2);
-                    respuesta.Errors.Add(new Error
-                    {
-                        Source = ErrorSource.ExternalService,
-                        Codigo = partes[0].Replace("Regla:", "").Trim(),
-                        Descripcion = partes.Length > 1 ? partes[1].Trim() : string.Empty
-                    });
-                }
-            }
-
-            GuardarEvento(numero, evento, referencia.UUID, dian.StatusCode);
-            return respuesta;
+            return (firmado, numero, referencia.UUID, "", "");
         }
 
         /// <summary>La factura recibida se guarda en la carpeta del cliente la primera vez; si no está, se pide a la DIAN.</summary>

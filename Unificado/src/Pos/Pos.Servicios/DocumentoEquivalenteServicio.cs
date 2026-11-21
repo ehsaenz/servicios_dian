@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DIAN.Pos.Servicios.Documentos;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
 using eFacturacionColombia_NETCore.Documentos.Extensiones;
@@ -58,31 +59,7 @@ namespace DIAN.Pos.Servicios
         public ResponseDian Enviar(MetaDatosDE tpe)
         {
             var software = Software;
-
-            if (tpe.Emisor.Identificacion != _tenant.Emisor.Nit)
-            {
-                throw new ArgumentException($"Este servicio no puede enviar Documentos Equivalentes para el emisor con NIT {tpe.Emisor.Identificacion}");
-            }
-
-            if (tpe.ExtensionDian.RangoNumeracion == null)
-            {
-                throw new ArgumentException("El documento no trae la resolución de numeración (RangoNumeracion).");
-            }
-
-            // La DIAN exige código y nombre del comprador (DEPD16, DEPD18). En producción los debe enviar el ERP;
-            // solo en habilitación se completan con la identificación y la razón social del adquiriente.
-            var codigoComprador = tpe.Adquiriente.CodigoCliente;
-            var nombreComprador = tpe.Adquiriente.NombreComercial;
-            if (string.IsNullOrWhiteSpace(codigoComprador) || string.IsNullOrWhiteSpace(nombreComprador))
-            {
-                if (!Habilitacion)
-                {
-                    throw new ArgumentException("Adquiriente.CodigoCliente y Adquiriente.NombreComercial son obligatorios en producción.");
-                }
-
-                codigoComprador = string.IsNullOrWhiteSpace(codigoComprador) ? tpe.Adquiriente.Identificacion : codigoComprador;
-                nombreComprador = string.IsNullOrWhiteSpace(nombreComprador) ? tpe.Adquiriente.RazonSocial : nombreComprador;
-            }
+            ValidarDatos(tpe, out var codigoComprador, out var nombreComprador);
 
             var idDoc = "DETP-" + tpe.Numero;
 
@@ -120,6 +97,80 @@ namespace DIAN.Pos.Servicios
                 File.Delete(ruta);
             }
 
+            var firmado = Firmar(tpe, software, codigoComprador, nombreComprador, out var documento, out var textoQr, out var xml);
+            File.WriteAllText(_rutas.XmlSinFirmar(idDoc), xml);
+            File.WriteAllBytes(_rutas.Xml(idDoc), firmado);
+
+            _registro.LogInformation("Enviando {Documento} a {Ambiente}", idDoc, Habilitacion ? "habilitación" : "producción");
+            var respuesta = transporte.Enviar(firmado, idDoc);
+
+            if (respuesta.statusCode == "00")
+            {
+                respuesta.StrQR = textoQr;
+            }
+
+            if (string.IsNullOrEmpty(respuesta.UUID))
+            {
+                respuesta.UUID = documento.UUID?.Value ?? string.Empty;
+            }
+
+            return respuesta;
+        }
+
+        /// <summary>
+        /// Envío al set de pruebas de documento equivalente POS (solo habilitación, con TestSetId): firma el tiquete y lo envía
+        /// por <c>EnviarSetPruebas</c> sin guardar el XML ni generar idempotencia local. Persiste <c>set-pos.json</c>.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(MetaDatosDE tpe)
+        {
+            if (!Habilitacion) throw new InvalidOperationException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = Software;
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento equivalente (POS) no tiene TestSetId (identificador del set de pruebas).");
+            if (tpe == null || string.IsNullOrWhiteSpace(tpe.Numero)) throw new ArgumentException("El documento no trae número.");
+
+            ValidarDatos(tpe, out var codigoComprador, out var nombreComprador);
+            var firmado = Firmar(tpe, software, codigoComprador, nombreComprador, out _, out _, out _);
+            var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, tpe.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet);
+        }
+
+        private void ValidarDatos(MetaDatosDE tpe, out string codigoComprador, out string nombreComprador)
+        {
+            if (tpe.Emisor.Identificacion != _tenant.Emisor.Nit)
+            {
+                throw new ArgumentException($"Este servicio no puede enviar Documentos Equivalentes para el emisor con NIT {tpe.Emisor.Identificacion}");
+            }
+
+            if (tpe.ExtensionDian.RangoNumeracion == null)
+            {
+                throw new ArgumentException("El documento no trae la resolución de numeración (RangoNumeracion).");
+            }
+
+            // La DIAN exige código y nombre del comprador (DEPD16, DEPD18). En producción los debe enviar el ERP;
+            // solo en habilitación se completan con la identificación y la razón social del adquiriente.
+            codigoComprador = tpe.Adquiriente.CodigoCliente;
+            nombreComprador = tpe.Adquiriente.NombreComercial;
+            if (string.IsNullOrWhiteSpace(codigoComprador) || string.IsNullOrWhiteSpace(nombreComprador))
+            {
+                if (!Habilitacion)
+                {
+                    throw new ArgumentException("Adquiriente.CodigoCliente y Adquiriente.NombreComercial son obligatorios en producción.");
+                }
+
+                codigoComprador = string.IsNullOrWhiteSpace(codigoComprador) ? tpe.Adquiriente.Identificacion : codigoComprador;
+                nombreComprador = string.IsNullOrWhiteSpace(nombreComprador) ? tpe.Adquiriente.RazonSocial : nombreComprador;
+            }
+        }
+
+        private byte[] Firmar(
+            MetaDatosDE tpe,
+            SoftwareConfig software,
+            string codigoComprador,
+            string nombreComprador,
+            out InvoiceType documento,
+            out string textoQr,
+            out string xml)
+        {
             foreach (var itm in tpe.Items)
             {
                 itm.Cantidad = itm.Cantidad.RedondearDian();
@@ -223,31 +274,12 @@ namespace DIAN.Pos.Servicios
             }
 
             generador.AsignarCUDE(software.PIN);
-            var documento = generador.Obtener();
-            var textoQr = generador.StringQR;
-
-            var xml = documento.SerializeXmlDocument().ToXmlString();
-            _rutas.Crear();
-            File.WriteAllText(_rutas.XmlSinFirmar(idDoc), xml);
+            documento = generador.Obtener();
+            textoQr = generador.StringQR;
+            xml = documento.SerializeXmlDocument().ToXmlString();
 
             var firma = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) };
-            var firmado = firma.FirmarDocumentoEquivalente(xml, DateTimeHelper.GetColombianDate(tpe.FechaEmision));
-            File.WriteAllBytes(_rutas.Xml(idDoc), firmado);
-
-            _registro.LogInformation("Enviando {Documento} a {Ambiente}", idDoc, Habilitacion ? "habilitación" : "producción");
-            var respuesta = transporte.Enviar(firmado, idDoc);
-
-            if (respuesta.statusCode == "00")
-            {
-                respuesta.StrQR = textoQr;
-            }
-
-            if (string.IsNullOrEmpty(respuesta.UUID))
-            {
-                respuesta.UUID = documento.UUID?.Value ?? string.Empty;
-            }
-
-            return respuesta;
+            return firma.FirmarDocumentoEquivalente(xml, DateTimeHelper.GetColombianDate(tpe.FechaEmision));
         }
 
         private InvoiceType? CargarFactura(string idDoc)

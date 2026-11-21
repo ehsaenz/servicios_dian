@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using DIAN.Pos.Servicios.Documentos;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
 using eFacturacionColombia_NETCore.Documentos.Extensiones;
@@ -24,14 +25,18 @@ namespace DIAN.Pos.Servicios
         private readonly DocumentoEquivalenteServicio _documentoEquivalente;
         private readonly TenantConfig _tenant;
         private readonly CertificadoCache _certificados;
+        private readonly IFabricaEnviadorDian _fabrica;
         private readonly RutasCliente _rutas;
+        private readonly TimeSpan _esperaSet;
         private readonly ILogger _registro;
 
         public NotaAjustePosServicio(TenantConfig tenant, CertificadoCache certificados, IFabricaEnviadorDian fabrica, string carpetaDatos, TimeSpan esperaSet, ILogger registro)
         {
             _tenant = tenant;
             _certificados = certificados;
+            _fabrica = fabrica;
             _rutas = new RutasCliente(carpetaDatos, tenant.Id);
+            _esperaSet = esperaSet;
             _registro = registro;
             _documentoEquivalente = new DocumentoEquivalenteServicio(tenant, certificados, fabrica, carpetaDatos, esperaSet, registro);
         }
@@ -163,42 +168,11 @@ namespace DIAN.Pos.Servicios
             Validar(de);
             var software = _tenant.ObtenerSoftware(TipoSoftware.DocumentoEquivalente)
                            ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_EQUIVALENTE no están bien configurados");
-            if (de.Emisor.Identificacion != _tenant.Emisor.Nit)
-                throw new ArgumentException("El NIT del emisor no corresponde al configurado para este cliente.");
-
-            // Prefijo de la numeración (NAAJ49) e identificador de pago: en producción los debe enviar el ERP.
-            // Solo en habilitación se completan: el prefijo con las letras iniciales del número, y el identificador con
-            // "NP" + el número (DetallePago.Identificador toma por defecto "NP" + la hora actual, y eso hace distinto
-            // el XML de cada intento y bloquearía el reenvío de la misma nota).
             var habilitacion = _tenant.EsHabilitacion(TipoSoftware.DocumentoEquivalente);
-            var sinPrefijo = string.IsNullOrWhiteSpace(de.Emisor.PrefijoRangoNumeracion);
-            var identificadorPorDefecto = Regex.IsMatch(de.DetallePago.Identificador ?? string.Empty, @"\ANP\d{15,19}\z");
-            if (!habilitacion && (sinPrefijo || identificadorPorDefecto))
-            {
-                throw new ArgumentException("Emisor.PrefijoRangoNumeracion y DetallePago.Identificador son obligatorios en producción.");
-            }
-
-            if (sinPrefijo)
-            {
-                var prefijo = Regex.Match(de.Numero, @"\A[A-Za-z]+").Value;
-                if (prefijo.Length > 0)
-                {
-                    de.Emisor.PrefijoRangoNumeracion = prefijo;
-                }
-            }
-
-            if (identificadorPorDefecto)
-            {
-                de.DetallePago.Identificador = "NP" + de.Numero;
-            }
-
-            var ambiente = habilitacion ? AmbienteDestino.PRUEBAS : AmbienteDestino.PRODUCCION;
-            var generador = CrearGenerador(de, ambiente, _tenant.Emisor.Nit, software.Identificador, software.PIN);
-            var nota = generador.Obtener();
+            var (generador, nota, xml) = Construir(de, software, habilitacion);
             var id = "NATP-" + de.Numero;
             var ruta = _rutas.Xml(id);
             var rutaSinFirmar = _rutas.XmlSinFirmar(id);
-            var xml = nota.SerializeXmlDocument().ToXmlString();
 
             lock (Locks[(StringComparer.OrdinalIgnoreCase.GetHashCode(_tenant.Id + ruta) & int.MaxValue) % Locks.Length])
             {
@@ -226,8 +200,7 @@ namespace DIAN.Pos.Servicios
                 }
 
                 File.WriteAllText(rutaSinFirmar, xml);
-                var firma = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) };
-                var firmado = firma.FirmarNotaAjusteDocumentoEquivalente(xml, de.FechaEmision);
+                var firmado = FirmarXml(xml, de.FechaEmision);
                 // Guardar antes de transmitir permite recuperar el CUDE tras una interrupción.
                 var temporal = ruta + ".tmp";
                 File.WriteAllBytes(temporal, firmado);
@@ -240,6 +213,71 @@ namespace DIAN.Pos.Servicios
                 if (string.IsNullOrEmpty(respuesta.TrackID)) respuesta.TrackID = nota.UUID.Value;
                 return respuesta;
             }
+        }
+
+        /// <summary>
+        /// Envío al set de pruebas de la nota de ajuste POS (solo habilitación, con TestSetId): firma la nota y la envía
+        /// por <c>EnviarSetPruebas</c> sin guardar XML ni avanzar archivos de idempotencia. Persiste <c>set-pos.json</c>.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(MetaDatosDE de)
+        {
+            Validar(de);
+            var habilitacion = _tenant.EsHabilitacion(TipoSoftware.DocumentoEquivalente);
+            if (!habilitacion) throw new InvalidOperationException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = _tenant.ObtenerSoftware(TipoSoftware.DocumentoEquivalente)
+                           ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_EQUIVALENTE no están bien configurados");
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento equivalente (POS) no tiene TestSetId (identificador del set de pruebas).");
+
+            var (_, _, xml) = Construir(de, software, habilitacion);
+            var firmado = FirmarXml(xml, de.FechaEmision);
+            var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, de.Numero, _rutas.CarpetaCliente, "set-pos.json", _esperaSet);
+        }
+
+        private (GeneradorNotaAjusteDocumentoEquivalente Generador, CreditNoteType Nota, string Xml) Construir(
+            MetaDatosDE de,
+            SoftwareConfig software,
+            bool habilitacion)
+        {
+            if (de.Emisor.Identificacion != _tenant.Emisor.Nit)
+                throw new ArgumentException("El NIT del emisor no corresponde al configurado para este cliente.");
+
+            // Prefijo de la numeración (NAAJ49) e identificador de pago: en producción los debe enviar el ERP.
+            // Solo en habilitación se completan: el prefijo con las letras iniciales del número, y el identificador con
+            // "NP" + el número (DetallePago.Identificador toma por defecto "NP" + la hora actual, y eso hace distinto
+            // el XML de cada intento y bloquearía el reenvío de la misma nota).
+            var sinPrefijo = string.IsNullOrWhiteSpace(de.Emisor.PrefijoRangoNumeracion);
+            var identificadorPorDefecto = Regex.IsMatch(de.DetallePago.Identificador ?? string.Empty, @"\ANP\d{15,19}\z");
+            if (!habilitacion && (sinPrefijo || identificadorPorDefecto))
+            {
+                throw new ArgumentException("Emisor.PrefijoRangoNumeracion y DetallePago.Identificador son obligatorios en producción.");
+            }
+
+            if (sinPrefijo)
+            {
+                var prefijo = Regex.Match(de.Numero, @"\A[A-Za-z]+").Value;
+                if (prefijo.Length > 0)
+                {
+                    de.Emisor.PrefijoRangoNumeracion = prefijo;
+                }
+            }
+
+            if (identificadorPorDefecto)
+            {
+                de.DetallePago.Identificador = "NP" + de.Numero;
+            }
+
+            var ambiente = habilitacion ? AmbienteDestino.PRUEBAS : AmbienteDestino.PRODUCCION;
+            var generador = CrearGenerador(de, ambiente, _tenant.Emisor.Nit, software.Identificador, software.PIN);
+            var nota = generador.Obtener();
+            var xml = nota.SerializeXmlDocument().ToXmlString();
+            return (generador, nota, xml);
+        }
+
+        private byte[] FirmarXml(string xml, DateTime fechaEmision)
+        {
+            var firma = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) };
+            return firma.FirmarNotaAjusteDocumentoEquivalente(xml, fechaEmision);
         }
     }
 }

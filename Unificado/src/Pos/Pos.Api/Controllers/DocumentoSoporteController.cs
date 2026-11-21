@@ -21,16 +21,22 @@ namespace DIAN.Pos.Api.Controllers
         }
 
         [HttpPost]
-        public ActionResult<ResponseDian> EnviarDSNO(MetaDatosDE de)
+        public IActionResult EnviarDSNO(MetaDatosDE de)
         {
             if (de.TipoDocumento == null)
             {
                 de.TipoDocumento = TipoDocumentoElectronico.DOCUMENTO_SOPORTE;
             }
 
+            var tenant = HttpContext.ObtenerTenant();
+            if (Request.EsEnvioSet())
+            {
+                return EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.DocumentoSoporte(tenant).ValidarEnSet(de));
+            }
+
             try
             {
-                return Ok(_servicios.DocumentoSoporte(HttpContext.ObtenerTenant()).Enviar(de));
+                return Ok(_servicios.DocumentoSoporte(tenant).Enviar(de));
             }
             catch (Exception ex)
             {

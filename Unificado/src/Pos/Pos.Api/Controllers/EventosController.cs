@@ -23,7 +23,7 @@ namespace DIAN.Pos.Api.Controllers
             _registro = registro;
         }
 
-        private async Task<ActionResult<ResponseDian>> Procesar(EventoRadian evento, string codigoEsperado)
+        private async Task<IActionResult> Procesar(EventoRadian evento, string codigoEsperado)
         {
             if (evento == null || evento.Codigo != codigoEsperado)
             {
@@ -38,6 +38,11 @@ namespace DIAN.Pos.Api.Controllers
                     return BadRequest(new ResponseDian { statusCode = "101", statusMessage = "El Evento 031 requiere que se especifique el código de la causa" });
                 if (string.IsNullOrEmpty(evento.Causa.Significado))
                     return BadRequest(new ResponseDian { statusCode = "101", statusMessage = "El Evento 031 requiere que se especifique el significado de la causa" });
+            }
+
+            if (Request.EsEnvioSet())
+            {
+                return EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.Eventos(HttpContext.ObtenerTenant()).ValidarEnSet(evento));
             }
 
             ResponseDian respuesta;
@@ -60,18 +65,18 @@ namespace DIAN.Pos.Api.Controllers
         }
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> AcuseFactura(EventoRadian evento) => Procesar(evento, "030");
+        public Task<IActionResult> AcuseFactura(EventoRadian evento) => Procesar(evento, "030");
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> ReclamoFactura(EventoRadian evento) => Procesar(evento, "031");
+        public Task<IActionResult> ReclamoFactura(EventoRadian evento) => Procesar(evento, "031");
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> ReciboBienesServicios(EventoRadian evento) => Procesar(evento, "032");
+        public Task<IActionResult> ReciboBienesServicios(EventoRadian evento) => Procesar(evento, "032");
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> AceptacionExpresa(EventoRadian evento) => Procesar(evento, "033");
+        public Task<IActionResult> AceptacionExpresa(EventoRadian evento) => Procesar(evento, "033");
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> AceptacionTacita(EventoRadian evento) => Procesar(evento, "034");
+        public Task<IActionResult> AceptacionTacita(EventoRadian evento) => Procesar(evento, "034");
     }
 }

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BasicLibraryExt;
 using DIAN.Pos.Servicios;
+using DIAN.Pos.Servicios.Documentos;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
 using eFacturacionColombia_NETCore.Documentos.Extensiones;
@@ -31,13 +32,17 @@ namespace DIAN.Nomina.Servicios
         private readonly CertificadoCache _certificados;
         private readonly IFabricaEnviadorDian _fabrica;
         private readonly AlmacenRegistrosNomina _almacen;
+        private readonly string _carpetaCliente;
         private readonly ILogger _registro;
+
+        public TimeSpan EsperaSet { get; set; } = TimeSpan.FromSeconds(5);
 
         public NominaServicio(TenantConfig tenant, CertificadoCache certificados, IFabricaEnviadorDian fabrica, string carpetaDatos, ILogger registro)
         {
             _tenant = tenant;
             _certificados = certificados;
             _fabrica = fabrica;
+            _carpetaCliente = Path.Combine(carpetaDatos, AlmacenRegistrosNomina.Seguro(tenant.Id));
             _almacen = new AlmacenRegistrosNomina(carpetaDatos, tenant.Id);
             _registro = registro;
         }
@@ -61,6 +66,54 @@ namespace DIAN.Nomina.Servicios
         // ------------------------------------------------------------------ envío
 
         public Task<ResponseDian> GenerarAsync(MetaDatosNEI nom, bool soloCrearXml = false) => Task.FromResult(Generar(nom, soloCrearXml));
+
+        public Task<ResultadoSet> ValidarEnSetAsync(MetaDatosNEI nom) => Task.FromResult(ValidarEnSet(nom));
+
+        /// <summary>
+        /// Envío al set de pruebas de nómina electrónica (solo habilitación, con TestSetId): construye y firma la nómina
+        /// (102 o 103) sin guardarla en disco y la envía por <c>EnviarSetPruebas</c>. Persiste <c>set-nomina.json</c>.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(MetaDatosNEI nom)
+        {
+            if (!Habilitacion) throw new InvalidOperationException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = Software;
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de nómina electrónica no tiene TestSetId (identificador del set de pruebas).");
+            if (nom?.InformacionEnvio == null) throw new ArgumentException("Falta la información de envío de la nómina.");
+            if (nom.Empleador?.NIT != _tenant.Emisor.Nit)
+                throw new ArgumentException($"Este servicio no está registrado al NIT del emisor de éste documento ({nom.Empleador?.NIT})");
+
+            var info = nom.InformacionEnvio;
+            if (info.Numero <= 0) throw new ArgumentException("El documento de nómina no trae un número válido.");
+            var numeroAjuste = nom.DocumentoReferencia?.Numero ?? "";
+            var cuneAjuste = nom.DocumentoReferencia?.Cune ?? "";
+
+            string numeroDocumento;
+            byte[] firmado;
+            if (info.TipoEnvio == enmTipoEnvio.Eliminar || info.TipoEnvio == enmTipoEnvio.Reemplazar)
+            {
+                if (info.TipoDocumentoElectronico != enmTipoDocElec.NominaElectronicaIndividualAjuste)
+                    throw new ArgumentException($"El campo TipoDocumentoElectrónico {(int)info.TipoDocumentoElectronico} no coincide con el tipo de envío {info.TipoEnvio}");
+                if (numeroAjuste == "" || cuneAjuste == "")
+                    throw new ArgumentException("Cuando se trata de Nómina de Ajuste los campos [Referencia.Numero] y [Referencia.CUNE] son obligatorios.");
+
+                var letra = info.TipoEnvio == enmTipoEnvio.Eliminar ? "E" : "R";
+                numeroDocumento = info.Prefijo + letra + info.Numero;
+                var referencia = new ReferenciaNominaIndividual { Numero = numeroAjuste, Cune = cuneAjuste, FechaGeneracion = nom.DocumentoReferencia.FechaGeneracion };
+                (firmado, _, _) = FirmarAjuste(nom, info.TipoEnvio, referencia);
+            }
+            else
+            {
+                if (info.TipoDocumentoElectronico != enmTipoDocElec.NominaElectronicaIndividual)
+                    throw new ArgumentException("El campo [InformacionEnvio.TipoDocumentoElectronico] tiene un valor errado.");
+                if (numeroAjuste != "" || cuneAjuste != "")
+                    throw new ArgumentException("Solo los documentos de Nómina de Ajuste necesitan los campos [Referencia.Numero] y [Referencia.CUNE].");
+
+                numeroDocumento = info.Prefijo + info.Numero;
+                (firmado, _, _) = FirmarIndividual(nom);
+            }
+
+            return EnviadorSetPruebas.Enviar(Enviador(), firmado, software.TestSetId, numeroDocumento, _carpetaCliente, "set-nomina.json", EsperaSet);
+        }
 
         public ResponseDian Generar(MetaDatosNEI nom, bool soloCrearXml)
         {
@@ -143,18 +196,10 @@ namespace DIAN.Nomina.Servicios
                 }
             }
 
-            var ahora = DateTimeHelper.GetColombianDate();
-            var generador = ConstructorNomina.ConstruirIndividual(nom, Software, AmbienteDestino, Habilitacion, ahora);
-            var nomina = generador.NominaIndividual;
-            var cune = nomina.InformacionGeneral.CUNE;
-
+            var (firmado, xml, cune) = FirmarIndividual(nom);
             var nombre = soloCrearXml ? numeroDocumento + "_copia" : numeroDocumento;
-            var xml = nomina.SerializeXmlDocument().ToXmlString();
             Directory.CreateDirectory(_almacen.CarpetaXml);
             File.WriteAllText(_almacen.RutaXml(nombre + "_sinfirma.xml"), xml);
-
-            var firmado = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) }
-                .FirmarNominaIndividual(xml, ahora);
             File.WriteAllBytes(_almacen.RutaXml(nombre + ".xml"), firmado);
 
             if (soloCrearXml)
@@ -188,25 +233,20 @@ namespace DIAN.Nomina.Servicios
                 return impide;
             }
 
-            var ahora = DateTimeHelper.GetColombianDate();
-            GeneradorAjusteNominaIndividual generador;
+            byte[] firmado;
+            string xml;
+            string cune;
             try
             {
-                generador = ConstructorNomina.ConstruirAjuste(nom, referencia, Software, AmbienteDestino, Habilitacion, ahora);
+                (firmado, xml, cune) = FirmarAjuste(nom, tipoEnvio, referencia);
             }
             catch (ArgumentException ex)
             {
                 return Rechazo("101", ex.Message);
             }
 
-            var ajuste = generador.AjusteNominaIndividual;
-            var cune = tipoEnvio == enmTipoEnvio.Reemplazar ? ajuste.Reemplazar.InformacionGeneral.CUNE : ajuste.Eliminar.InformacionGeneral.CUNE;
-
-            var xml = ajuste.SerializeXmlDocument().ToXmlString();
             Directory.CreateDirectory(_almacen.CarpetaXml);
             File.WriteAllText(_almacen.RutaXml(numeroDocumento + "_sinfirma.xml"), xml);
-            var firmado = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) }
-                .FirmarAjusteNominaIndividual(xml, ahora);
             File.WriteAllBytes(_almacen.RutaXml(numeroDocumento + ".xml"), firmado);
 
             var registro = new RegistroNomina
@@ -221,6 +261,27 @@ namespace DIAN.Nomina.Servicios
             _almacen.Guardar(registro);
 
             return Transmitir(registro, firmado, numeroDocumento);
+        }
+
+        private (byte[] Firmado, string Xml, string Cune) FirmarIndividual(MetaDatosNEI nom)
+        {
+            var ahora = DateTimeHelper.GetColombianDate();
+            var nomina = ConstructorNomina.ConstruirIndividual(nom, Software, AmbienteDestino, Habilitacion, ahora).NominaIndividual;
+            var xml = nomina.SerializeXmlDocument().ToXmlString();
+            var firmado = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) }
+                .FirmarNominaIndividual(xml, ahora);
+            return (firmado, xml, nomina.InformacionGeneral.CUNE);
+        }
+
+        private (byte[] Firmado, string Xml, string Cune) FirmarAjuste(MetaDatosNEI nom, enmTipoEnvio tipoEnvio, ReferenciaNominaIndividual referencia)
+        {
+            var ahora = DateTimeHelper.GetColombianDate();
+            var ajuste = ConstructorNomina.ConstruirAjuste(nom, referencia, Software, AmbienteDestino, Habilitacion, ahora).AjusteNominaIndividual;
+            var cune = tipoEnvio == enmTipoEnvio.Reemplazar ? ajuste.Reemplazar.InformacionGeneral.CUNE : ajuste.Eliminar.InformacionGeneral.CUNE;
+            var xml = ajuste.SerializeXmlDocument().ToXmlString();
+            var firmado = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) }
+                .FirmarAjusteNominaIndividual(xml, ahora);
+            return (firmado, xml, cune);
         }
 
         /// <summary>Envía el documento firmado a la DIAN y deja registrado su estado.</summary>

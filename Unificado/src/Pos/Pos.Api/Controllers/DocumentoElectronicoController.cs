@@ -23,11 +23,23 @@ namespace DIAN.Pos.Api.Controllers
         }
 
         [HttpPost]
-        public ActionResult<ResponseDian> EnviarDE(MetaDatosDE de)
+        public IActionResult EnviarDE(MetaDatosDE de)
         {
             if (de?.TipoDocumento == null)
             {
                 return BadRequest("No se ha especificado un tipo de dcumento electrónico válido");
+            }
+
+            var tenant = HttpContext.ObtenerTenant();
+            if (Request.EsEnvioSet())
+            {
+                return de.TipoDocumento.Codigo switch
+                {
+                    "05" => EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.DocumentoSoporte(tenant).ValidarEnSet(de)),
+                    "94" => EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.NotaAjustePos(tenant).ValidarEnSet(de)),
+                    "20" => EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.DocumentoEquivalente(tenant).ValidarEnSet(de)),
+                    _ => BadRequest($"Este servicio no está configurado para enviar documentos electrónicos de tipo: [{de.TipoDocumento.Codigo}]")
+                };
             }
 
             switch (de.TipoDocumento.Codigo)
@@ -35,7 +47,7 @@ namespace DIAN.Pos.Api.Controllers
                 case "05":
                     try
                     {
-                        return Ok(_servicios.DocumentoSoporte(HttpContext.ObtenerTenant()).Enviar(de));
+                        return Ok(_servicios.DocumentoSoporte(tenant).Enviar(de));
                     }
                     catch (Exception ex)
                     {
@@ -46,7 +58,7 @@ namespace DIAN.Pos.Api.Controllers
                     try
                     {
                         NotaAjustePosServicio.Validar(de);
-                        return Ok(_servicios.NotaAjustePos(HttpContext.ObtenerTenant()).Enviar(de));
+                        return Ok(_servicios.NotaAjustePos(tenant).Enviar(de));
                     }
                     catch (ArgumentException ex)
                     {
@@ -64,7 +76,7 @@ namespace DIAN.Pos.Api.Controllers
                 case "20": // Tiquete POS electrónico
                     try
                     {
-                        return Ok(_servicios.DocumentoEquivalente(HttpContext.ObtenerTenant()).Enviar(de));
+                        return Ok(_servicios.DocumentoEquivalente(tenant).Enviar(de));
                     }
                     catch (Exception ex)
                     {
@@ -77,7 +89,7 @@ namespace DIAN.Pos.Api.Controllers
         }
 
         [HttpPost]
-        public ActionResult<ResponseDian> EnviarDEJson(string JsonDE)
+        public IActionResult EnviarDEJson(string JsonDE)
         {
             if (string.IsNullOrEmpty(JsonDE))
             {

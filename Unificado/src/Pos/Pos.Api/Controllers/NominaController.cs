@@ -43,9 +43,14 @@ namespace DIAN.Pos.Api.Controllers
             return int.TryParse(codigo, out var numero) && numero >= 0 && numero <= 99;
         }
 
-        private async Task<ActionResult<ResponseDian>> Procesar(MetaDatosNEI nei, bool soloCrearXml)
+        private async Task<IActionResult> Procesar(MetaDatosNEI nei, bool soloCrearXml)
         {
             var tenant = HttpContext.ObtenerTenant();
+            if (!soloCrearXml && Request.EsEnvioSet())
+            {
+                return EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.Nomina(tenant).ValidarEnSet(nei));
+            }
+
             if (nei?.Empleador?.NIT != tenant.Emisor.Nit)
             {
                 return BadRequest(new ResponseDian
@@ -75,10 +80,10 @@ namespace DIAN.Pos.Api.Controllers
         }
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> EnviarNE(MetaDatosNEI nei) => Procesar(nei, false);
+        public Task<IActionResult> EnviarNE(MetaDatosNEI nei) => Procesar(nei, false);
 
         [HttpPost]
-        public Task<ActionResult<ResponseDian>> CrearXML(MetaDatosNEI nei) => Procesar(nei, true);
+        public Task<IActionResult> CrearXML(MetaDatosNEI nei) => Procesar(nei, true);
 
         [HttpGet("{TractID}")]
         public async Task<ActionResult<ResponseDian>> ConsultarNE(string TractID)
