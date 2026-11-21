@@ -28,8 +28,13 @@ namespace DIAN.Admin.Web
         private const string TipoNotaCredito = "91";
         private const string TipoNotaDebito = "92";
 
-        public static IReadOnlyList<ItemProduccion> Evaluar(ClienteRegistro c, IReadOnlyList<DocumentoVista> documentos, DateTime ahoraUtc)
+        public static IReadOnlyList<ItemProduccion> Evaluar(
+            ClienteRegistro c,
+            IReadOnlyList<DocumentoVista> documentos,
+            DateTime ahoraUtc,
+            EvidenciaSets? sets = null)
         {
+            sets ??= new EvidenciaSets();
             var items = new List<ItemProduccion>();
 
             // 1. Emisor
@@ -65,55 +70,49 @@ namespace DIAN.Admin.Web
                 items.Add(new ItemProduccion("Certificado de firma", ResultadoItem.Cumplido, "Vigente hasta " + c.CertificadoVenceUtc?.ToString("yyyy-MM-dd") + "."));
             }
 
-            // 3. Software registrado por módulo. Cada módulo tiene su propio set de pruebas: el de facturación se verifica
-            // abajo; los demás aún no se verifican en esta lista y quedan pendientes (bloquean la producción).
+            // Cada bloque (facturación, POS, nómina, RADIAN) se habilita por separado y tiene su propio set de pruebas.
+            // Un bloque en habilitación no bloquea. Un bloque en producción bloquea hasta que su set esté verificado.
             var modulos = c.Software.ToList();
             var fe = modulos.Where(s => s.TipoSoftware == TipoSoftware.FacturacionElectronica).ToList();
+            var feEnProduccion = fe.Any(s => !s.AmbientePruebas);
+
             if (modulos.Count == 0)
             {
                 items.Add(new ItemProduccion("Software de facturación electrónica", ResultadoItem.Pendiente, "Falta registrar el software (identificador y PIN)."));
             }
             else if (fe.Count > 0)
             {
-                items.Add(new ItemProduccion("Software de facturación electrónica", ResultadoItem.Cumplido, "Registrado."));
+                items.Add(new ItemProduccion("Software de facturación electrónica", ResultadoItem.Cumplido, feEnProduccion ? "Registrado en producción." : "Registrado en habilitación."));
             }
 
-            foreach (var s in modulos.Where(s => s.TipoSoftware != TipoSoftware.FacturacionElectronica))
-            {
-                var nombre = NombreModulo(s.TipoSoftware);
-                items.Add(new ItemProduccion("Software de " + nombre, ResultadoItem.Cumplido, "Registrado."));
-                // Aviso, no Pendiente: esta lista aún no sabe verificar el set de pruebas de este módulo. Si fuera
-                // Pendiente, bloquearía la producción para siempre a cualquier cliente que lo use.
-                items.Add(new ItemProduccion("Set de pruebas de " + nombre, ResultadoItem.Aviso,
-                    "Esta lista aún no verifica el set de pruebas de este módulo; revíselo fuera de ella."));
-            }
-
-            // 4. Set de pruebas: documentos aprobados por la DIAN de habilitación, por tipo
+            // 3. Facturación electrónica (01, 91, 92): única fuente bloqueante es el estado oficial del set DIAN;
+            // los conteos locales quedan como referencia informativa.
             int Aprobados(string tipo) => documentos.Count(d => d.Estado == 1 && d.Habilitacion && d.TipoDocDian == tipo);
             var fv = Aprobados(TipoFactura);
             var nc = Aprobados(TipoNotaCredito);
             var nd = Aprobados(TipoNotaDebito);
-            var resumen = $"Aprobados en habilitación: {fv} factura(s), {nc} nota(s) crédito, {nd} nota(s) débito.";
-            if (fe.Count > 0 || modulos.Count == 0) items.Add(fv == 0
-                ? new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Pendiente, "Ninguna factura aprobada en habilitación todavía. " + resumen)
-                : nc == 0 || nd == 0
-                    ? new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Aviso, "Faltan notas por probar. " + resumen)
-                    : new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Cumplido, resumen));
+            var resumen = $"Aprobados en habilitación (informativo): {fv} factura(s), {nc} nota(s) crédito, {nd} nota(s) débito.";
+            var setFe = sets.SetDe(TipoSoftware.FacturacionElectronica);
+            if (fe.Count > 0 || modulos.Count == 0)
+            {
+                items.Add(EvaluarEstadoSet("Set de pruebas de la DIAN", feEnProduccion || modulos.Count == 0, setFe, resumen));
+            }
 
-            // 5. Todo software registrado debe estar marcado como producción (con su PIN y su identificador de producción)
-            var enPruebas = modulos.Where(s => s.AmbientePruebas).Select(s => NombreModulo(s.TipoSoftware)).ToList();
-            items.Add(modulos.Count > 0 && enPruebas.Count == 0
-                ? new ItemProduccion("Software de producción", ResultadoItem.Cumplido, "Todos los softwares registrados están marcados como producción.")
-                : new ItemProduccion("Software de producción", ResultadoItem.Pendiente, enPruebas.Count > 0
-                    ? "Desmarque «Ambiente de pruebas» en: " + string.Join(", ", enPruebas) + "."
-                    : "Registre el software de producción (identificador y PIN de producción)."));
+            // 4. Resto de bloques (POS, nómina, RADIAN, documento soporte): cada uno con su propio set de pruebas.
+            foreach (var s in modulos.Where(s => s.TipoSoftware != TipoSoftware.FacturacionElectronica))
+            {
+                var nombre = NombreModulo(s.TipoSoftware);
+                items.Add(new ItemProduccion("Software de " + nombre, ResultadoItem.Cumplido,
+                    s.AmbientePruebas ? "Registrado en habilitación." : "Registrado en producción."));
+                items.Add(EvaluarModulo(s, nombre, sets));
+            }
 
-            // 6. Clave de API activa
+            // 5. Clave de API activa
             items.Add(c.Claves.Any(k => k.Activa)
                 ? new ItemProduccion("Clave de API", ResultadoItem.Cumplido, "Tiene al menos una clave activa.")
                 : new ItemProduccion("Clave de API", ResultadoItem.Aviso, "Aún no tiene clave de API: su ERP no podrá enviar."));
 
-            // 7. Logo
+            // 6. Logo
             items.Add(!string.IsNullOrEmpty(c.ArchivoLogo) || c.Sucursales.Any(s => !string.IsNullOrEmpty(s.ArchivoLogo))
                 ? new ItemProduccion("Logo", ResultadoItem.Cumplido, "Cargado.")
                 : new ItemProduccion("Logo", ResultadoItem.Aviso, "Sin logo: el PDF sale sin él."));
@@ -121,7 +120,62 @@ namespace DIAN.Admin.Web
             return items;
         }
 
-        /// <summary>Mensaje de lo que impide autorizar producción, o null si no hay impedimentos.</summary>
+        private static ItemProduccion EvaluarModulo(SoftwareRegistro s, string nombre, EvidenciaSets sets)
+        {
+            var titulo = "Set de pruebas de " + nombre;
+            var setBloque = sets.SetDe(s.TipoSoftware);
+            var bloquea = !s.AmbientePruebas;
+
+            switch (s.TipoSoftware)
+            {
+                case TipoSoftware.DocumentoEquivalente:
+                {
+                    var resumen = $"Aprobados en habilitación (informativo): {sets.TiquetesPosAprobados} tiquete(s) POS, {sets.NotasAjustePosAprobadas} nota(s) de ajuste.";
+                    return EvaluarEstadoSet(titulo, bloquea, setBloque, resumen);
+                }
+                case TipoSoftware.DocumentoSoporte:
+                {
+                    var resumen = $"Aprobados en habilitación (informativo): {sets.DocumentosSoporteAprobados} documento(s) soporte.";
+                    return EvaluarEstadoSet(titulo, bloquea, setBloque, resumen);
+                }
+                case TipoSoftware.NominaElectronica:
+                {
+                    var resumen = $"Aprobados en habilitación (informativo): {sets.NominasIndividualesAprobadas} nómina(s) individual(es), {sets.NominasAjusteAprobadas} nota(s) de ajuste.";
+                    return EvaluarEstadoSet(titulo, bloquea, setBloque, resumen);
+                }
+                case TipoSoftware.EventosRadian:
+                {
+                    var resumen = $"Aprobados en habilitación (informativo): {sets.EventosRadianAprobados} evento(s) RADIAN.";
+                    return EvaluarEstadoSet(titulo, bloquea, setBloque, resumen);
+                }
+                default:
+                    return EvaluarEstadoSet(titulo, bloquea, setBloque, "Módulo sin conteos locales definidos.");
+            }
+        }
+
+        private static ItemProduccion EvaluarEstadoSet(string titulo, bool bloqueaSiNoAceptado, EstadoSetBloque? setBloque, string resumenInformativo)
+        {
+            if (setBloque is { Aceptado: true })
+            {
+                var detalleSet = string.IsNullOrWhiteSpace(setBloque.MensajeVisible)
+                    ? "La DIAN informó que el set de pruebas se encuentra aceptado."
+                    : setBloque.MensajeVisible;
+                return new ItemProduccion(titulo, ResultadoItem.Cumplido, $"{detalleSet} {resumenInformativo}");
+            }
+
+            var resultado = bloqueaSiNoAceptado ? ResultadoItem.Pendiente : ResultadoItem.Aviso;
+            if (setBloque != null && (!string.IsNullOrWhiteSpace(setBloque.MensajeVisible) || !string.IsNullOrWhiteSpace(setBloque.Estado)))
+            {
+                var prefijo = !string.IsNullOrWhiteSpace(setBloque.Estado)
+                    ? $"Estado del set: {setBloque.Estado}."
+                    : "Set de pruebas aún sin aceptar por la DIAN.";
+                var detalle = string.IsNullOrWhiteSpace(setBloque.MensajeVisible) ? prefijo : $"{prefijo} {setBloque.MensajeVisible}";
+                return new ItemProduccion(titulo, resultado, $"{detalle} {resumenInformativo}");
+            }
+
+            return new ItemProduccion(titulo, resultado, $"Set de pruebas aún sin confirmación de aceptación en la DIAN. {resumenInformativo}");
+        }
+
         private static string NombreModulo(TipoSoftware tipo) => tipo switch
         {
             TipoSoftware.FacturacionElectronica => "facturación electrónica",

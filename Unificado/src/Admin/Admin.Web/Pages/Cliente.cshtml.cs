@@ -101,7 +101,7 @@ namespace DIAN.Admin.Web.Pages
             Documentos = _documentos.Recientes(cliente.Id, 50);
             if (User.EsOperador())
             {
-                Lista = ListaProduccion.Evaluar(cliente, _documentos.Recientes(cliente.Id, 1000), DateTime.UtcNow);
+                Lista = ListaProduccion.Evaluar(cliente, _documentos.Recientes(cliente.Id, 1000), DateTime.UtcNow, _documentos.LeerSets(cliente.Id));
             }
             return true;
         }
@@ -314,7 +314,7 @@ namespace DIAN.Admin.Web.Pages
                 {
                     // Se revisa en el servidor, no solo en la pantalla: la lista decide, no el botón.
                     var actual = await _admin.ObtenerAsync(id) ?? throw new ErrorAdministracion("El cliente no existe.");
-                    var impedimento = ListaProduccion.Impedimentos(ListaProduccion.Evaluar(actual, _documentos.Recientes(id, 1000), DateTime.UtcNow));
+                    var impedimento = ListaProduccion.Impedimentos(ListaProduccion.Evaluar(actual, _documentos.Recientes(id, 1000), DateTime.UtcNow, _documentos.LeerSets(id)));
                     if (impedimento != null)
                     {
                         throw new ErrorAdministracion(impedimento + " Complete la lista de verificación antes de autorizar producción.");

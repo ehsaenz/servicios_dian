@@ -461,10 +461,22 @@ public class ListaProduccionTests
     private static DocumentoVista Doc(string tipo, int estado = 1, bool habilitacion = true) =>
         new() { Numero = tipo + Guid.NewGuid().ToString("N")[..4], TipoDocDian = tipo, Estado = estado, Habilitacion = habilitacion };
 
+    private static EvidenciaSets ConSetFeAceptado()
+    {
+        var sets = new EvidenciaSets();
+        sets.Sets[TipoSoftware.FacturacionElectronica] = new EstadoSetBloque
+        {
+            Estado = "aceptado",
+            StatusCode = "2",
+            Mensaje = "Set de prueba con identificador 1 se encuentra Aceptado."
+        };
+        return sets;
+    }
+
     [Fact]
     public void Un_cliente_completo_con_el_set_aprobado_no_tiene_impedimentos()
     {
-        var lista = ListaProduccion.Evaluar(Completo(), new[] { Doc("01"), Doc("91"), Doc("92") }, Ahora);
+        var lista = ListaProduccion.Evaluar(Completo(), new[] { Doc("01"), Doc("91"), Doc("92") }, Ahora, ConSetFeAceptado());
 
         Assert.All(lista, i => Assert.Equal(ResultadoItem.Cumplido, i.Resultado));
         Assert.Null(ListaProduccion.Impedimentos(lista));
@@ -477,53 +489,57 @@ public class ListaProduccionTests
 
         var impedimentos = ListaProduccion.Impedimentos(ListaProduccion.Evaluar(nuevo, Array.Empty<DocumentoVista>(), Ahora))!;
 
-        foreach (var esperado in new[] { "Datos del emisor", "Certificado de firma", "Software de facturación electrónica", "Set de pruebas de la DIAN", "Software de producción" })
+        foreach (var esperado in new[] { "Datos del emisor", "Certificado de firma", "Software de facturación electrónica", "Set de pruebas de la DIAN" })
         {
             Assert.Contains(esperado, impedimentos);
         }
     }
 
     [Fact]
-    public void Solo_cuentan_las_facturas_aprobadas_en_habilitacion()
+    public void Los_conteos_locales_son_informativos_y_solo_el_set_aceptado_habilita_produccion()
     {
-        var docs = new[] { Doc("01", estado: 2), Doc("01", estado: 3), Doc("01", habilitacion: false) };
+        var docs = new[] { Doc("01"), Doc("91"), Doc("92") };
 
-        var set = ListaProduccion.Evaluar(Completo(), docs, Ahora).Single(i => i.Titulo.StartsWith("Set de pruebas"));
-
-        Assert.Equal(ResultadoItem.Pendiente, set.Resultado);
+        var sinSet = ListaProduccion.Evaluar(Completo(), docs, Ahora).Single(i => i.Titulo.StartsWith("Set de pruebas"));
+        Assert.Equal(ResultadoItem.Pendiente, sinSet.Resultado);
+        Assert.Contains("informativo", sinSet.Detalle);
     }
 
     [Fact]
-    public void Sin_notas_el_set_es_aviso_y_un_certificado_vencido_o_por_vencer_se_distingue()
+    public void En_habilitacion_el_set_sin_aceptar_es_aviso_y_un_certificado_vencido_o_por_vencer_se_distingue()
     {
         var c = Completo();
+        c.Software[0].AmbientePruebas = true;
         Assert.Equal(ResultadoItem.Aviso, ListaProduccion.Evaluar(c, new[] { Doc("01") }, Ahora).Single(i => i.Titulo.StartsWith("Set de pruebas")).Resultado);
 
+        c.Software[0].AmbientePruebas = false;
+        var sets = ConSetFeAceptado();
         c.CertificadoVenceUtc = Ahora.AddDays(10);
-        Assert.Equal(ResultadoItem.Aviso, ListaProduccion.Evaluar(c, new[] { Doc("01") }, Ahora).Single(i => i.Titulo == "Certificado de firma").Resultado);
+        Assert.Equal(ResultadoItem.Aviso, ListaProduccion.Evaluar(c, new[] { Doc("01") }, Ahora, sets).Single(i => i.Titulo == "Certificado de firma").Resultado);
 
         c.CertificadoVenceUtc = Ahora.AddDays(-1);
-        Assert.Equal(ResultadoItem.Pendiente, ListaProduccion.Evaluar(c, new[] { Doc("01") }, Ahora).Single(i => i.Titulo == "Certificado de firma").Resultado);
+        Assert.Equal(ResultadoItem.Pendiente, ListaProduccion.Evaluar(c, new[] { Doc("01") }, Ahora, sets).Single(i => i.Titulo == "Certificado de firma").Resultado);
     }
 
     [Fact]
-    public void Con_el_software_aun_en_pruebas_falta_el_de_produccion()
+    public void Un_bloque_en_habilitacion_no_bloquea_la_produccion()
     {
         var c = Completo();
         c.Software[0].AmbientePruebas = true;
 
-        var item = ListaProduccion.Evaluar(c, new[] { Doc("01"), Doc("91"), Doc("92") }, Ahora).Single(i => i.Titulo == "Software de producción");
+        var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora);
 
-        Assert.Equal(ResultadoItem.Pendiente, item.Resultado);
+        Assert.Equal(ResultadoItem.Aviso, lista.Single(i => i.Titulo == "Set de pruebas de la DIAN").Resultado);
+        Assert.Null(ListaProduccion.Impedimentos(lista));
     }
 
     [Fact]
-    public void Un_cliente_solo_con_POS_o_Nomina_en_produccion_no_queda_bloqueado_por_facturacion_electronica()
+    public void Un_cliente_solo_con_POS_o_Nomina_en_habilitacion_no_queda_bloqueado()
     {
         var c = Completo();
         c.Software.Clear();
-        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
-        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = true });
+        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = true });
 
         var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora);
 
@@ -531,5 +547,161 @@ public class ListaProduccionTests
         Assert.DoesNotContain(lista, i => i.Titulo == "Software de facturación electrónica");
         Assert.Equal(ResultadoItem.Aviso, lista.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
         Assert.Equal(ResultadoItem.Aviso, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+    }
+
+    [Fact]
+    public void Un_bloque_en_produccion_sin_verificar_su_set_bloquea_la_produccion()
+    {
+        var c = Completo();
+        c.Software.Clear();
+        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+
+        var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora);
+
+        Assert.Equal(ResultadoItem.Pendiente, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+        Assert.NotNull(ListaProduccion.Impedimentos(lista));
+    }
+
+    [Fact]
+    public void Los_conteos_en_disco_se_leen_como_informativos_y_no_desbloquean_produccion_sin_set_aceptado()
+    {
+        var raiz = Path.Combine(Path.GetTempPath(), "dian-sets-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var cliente = Path.Combine(raiz, "UNO");
+            Directory.CreateDirectory(Path.Combine(cliente, "XML"));
+            Directory.CreateDirectory(Path.Combine(cliente, "nomina", "docs"));
+            Directory.CreateDirectory(Path.Combine(cliente, "radian", "eventos"));
+
+            static string AppResponse(string codigo) =>
+                $"<ApplicationResponse xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\"><cbc:ResponseCode>{codigo}</cbc:ResponseCode></ApplicationResponse>";
+
+            File.WriteAllText(Path.Combine(cliente, "XML", "DETP-POS1-appresponse.xml"), AppResponse("02"));
+            File.WriteAllText(Path.Combine(cliente, "XML", "NATP-NA1-appresponse.xml"), AppResponse("02"));
+            File.WriteAllText(Path.Combine(cliente, "XML", "DSNO-DS1-appresponse.xml"), AppResponse("02"));
+            File.WriteAllText(Path.Combine(cliente, "XML", "DSNO-RECH-appresponse.xml"), AppResponse("04"));
+            File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "102_N1.json"), "{\"TipoDocumento\":102,\"Estado\":5,\"StatusCode\":\"00\"}");
+            File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "102_RECH.json"), "{\"TipoDocumento\":102,\"Estado\":3,\"StatusCode\":\"00\"}");
+            File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "103_NA1.json"), "{\"TipoDocumento\":103,\"Estado\":2,\"StatusCode\":\"00\"}");
+            File.WriteAllText(Path.Combine(cliente, "radian", "eventos", "030_EVT1.json"), "{\"Numero\":\"EVT1\",\"EstadoDian\":\"00\"}");
+            File.WriteAllText(Path.Combine(cliente, "radian", "eventos", "031_EVT2.json"), "{\"Numero\":\"EVT2\",\"EstadoDian\":\"99\"}");
+
+            // Sets no aceptados explícitos tampoco deben desbloquear.
+            File.WriteAllText(Path.Combine(cliente, "set-pos.json"), "{\"estado\":\"en_proceso\",\"statusCode\":\"00\",\"mensaje\":\"Documento valido, faltan envios.\"}");
+            File.WriteAllText(Path.Combine(cliente, "set-nomina.json"), "{\"estado\":\"rechazado\",\"statusCode\":\"99\",\"mensaje\":\"Regla N01\"}");
+
+            var sets = new LectorDocumentos(raiz).LeerSets("UNO");
+            Assert.Equal(1, sets.TiquetesPosAprobados);
+            Assert.Equal(1, sets.NotasAjustePosAprobadas);
+            Assert.Equal(1, sets.DocumentosSoporteAprobados);
+            Assert.Equal(1, sets.NominasIndividualesAprobadas);
+            Assert.Equal(1, sets.NominasAjusteAprobadas);
+            Assert.Equal(1, sets.EventosRadianAprobados);
+
+            var c = Completo();
+            c.Software.Clear();
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoSoporte, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.EventosRadian, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+
+            var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora, sets);
+
+            Assert.NotNull(ListaProduccion.Impedimentos(lista));
+            Assert.Equal(ResultadoItem.Pendiente, lista.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
+            Assert.Equal(ResultadoItem.Pendiente, lista.Single(i => i.Titulo == "Set de pruebas de documento soporte").Resultado);
+            Assert.Equal(ResultadoItem.Pendiente, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+            Assert.Equal(ResultadoItem.Pendiente, lista.Single(i => i.Titulo == "Set de pruebas de eventos RADIAN").Resultado);
+
+            // En habilitación quedan en Aviso (no bloquean).
+            foreach (var s in c.Software) s.AmbientePruebas = true;
+            var enHab = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora, sets);
+            Assert.Null(ListaProduccion.Impedimentos(enHab));
+            Assert.Equal(ResultadoItem.Aviso, enHab.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
+            Assert.Equal(ResultadoItem.Aviso, enHab.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+        }
+        finally
+        {
+            if (Directory.Exists(raiz)) Directory.Delete(raiz, true);
+        }
+    }
+
+    [Fact]
+    public void Todos_los_bloques_con_set_aceptado_por_la_DIAN_quedan_cumplidos_sin_requerir_conteos()
+    {
+        var raiz = Path.Combine(Path.GetTempPath(), "dian-set-aceptado-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var cliente = Path.Combine(raiz, "UNO");
+            Directory.CreateDirectory(cliente);
+
+            const string msgAceptado = "Set de prueba con identificador x se encuentra Aceptado.";
+            File.WriteAllText(Path.Combine(cliente, "set-facturacion.json"),
+                $"{{\"Estado\":\"aceptado\",\"Mensaje\":\"{msgAceptado}\",\"ZipKey\":\"zip-1\",\"Numero\":\"SETP1\",\"FechaUtc\":\"2026-11-21T00:00:00Z\"}}");
+            File.WriteAllText(Path.Combine(cliente, "set-pos.json"), $"{{\"estado\":\"aceptado\",\"statusCode\":\"2\",\"mensaje\":\"{msgAceptado}\"}}");
+            File.WriteAllText(Path.Combine(cliente, "set-ds.json"), $"{{\"estado\":\"aceptado\",\"statusCode\":\"2\",\"mensaje\":\"{msgAceptado}\"}}");
+            File.WriteAllText(Path.Combine(cliente, "set-nomina.json"), $"{{\"estado\":\"aceptado\",\"statusCode\":\"2\",\"mensaje\":\"{msgAceptado}\"}}");
+            File.WriteAllText(Path.Combine(cliente, "set-radian.json"), $"{{\"estado\":\"aceptado\",\"statusCode\":\"2\",\"mensaje\":\"{msgAceptado}\"}}");
+
+            var sets = new LectorDocumentos(raiz).LeerSets("UNO");
+            Assert.True(sets.SetPosAceptado);
+            Assert.True(sets.SetNominaAceptado);
+            Assert.Equal(5, sets.Sets.Count);
+
+            var c = Completo();
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoSoporte, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.EventosRadian, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+
+            var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora, sets);
+
+            Assert.Null(ListaProduccion.Impedimentos(lista));
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de la DIAN").Resultado);
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de documento soporte").Resultado);
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de eventos RADIAN").Resultado);
+        }
+        finally
+        {
+            if (Directory.Exists(raiz)) Directory.Delete(raiz, true);
+        }
+    }
+
+    [Fact]
+    public void La_evidencia_heredada_de_pos_y_nomina_con_statusCode_2_sigue_desbloqueando()
+    {
+        var raiz = Path.Combine(Path.GetTempPath(), "dian-set-heredado-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var cliente = Path.Combine(raiz, "UNO");
+            Directory.CreateDirectory(Path.Combine(cliente, "XML"));
+            Directory.CreateDirectory(Path.Combine(cliente, "nomina", "docs"));
+
+            File.WriteAllText(Path.Combine(cliente, "XML", "DETP-EPOS1-dian.json"),
+                "{\"StatusCode\":\"2\",\"StatusMessage\":\"Set de prueba con identificador x se encuentra Aceptado.\"}");
+            File.WriteAllText(Path.Combine(cliente, "nomina", "docs", "102_N1.json"),
+                "{\"TipoDocumento\":102,\"Estado\":3,\"StatusCode\":\"2\",\"StatusMessage\":\"Set de prueba con identificador x se encuentra Aceptado.\"}");
+
+            var sets = new LectorDocumentos(raiz).LeerSets("UNO");
+            Assert.True(sets.SetPosAceptado);
+            Assert.True(sets.SetNominaAceptado);
+
+            var c = Completo();
+            c.Software.Clear();
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+            c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+
+            var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora, sets);
+
+            Assert.Null(ListaProduccion.Impedimentos(lista));
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
+            Assert.Equal(ResultadoItem.Cumplido, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+        }
+        finally
+        {
+            if (Directory.Exists(raiz)) Directory.Delete(raiz, true);
+        }
     }
 }
