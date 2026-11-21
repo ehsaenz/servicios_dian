@@ -353,7 +353,7 @@ namespace DIAN.Nomina.Servicios
 
             respuesta.statusCode = dian.StatusCode;
             respuesta.statusMessage = dian.StatusMessage;
-            respuesta.TrackID = dian.XmlDocumentKey;
+            respuesta.TrackID = registro.Cune;
             respuesta.UUID = registro.Cune;
             AgregarMensajes(respuesta, dian);
             return respuesta;

@@ -312,9 +312,14 @@ public class NominaApiTests : IClassFixture<CarpetaClientes>, IDisposable
 
         Assert.Equal(HttpStatusCode.OK, codigo);
         Assert.Equal("00", r.statusCode);
-        Assert.Equal("uuid-falso", r.TrackID);
+        Assert.Equal(r.UUID, r.TrackID);
+        Assert.Equal(96, r.TrackID.Length);
         Assert.Equal(AmbienteServicio.PRODUCCION, _fabrica.Llamadas.Single().Ambiente);
         Assert.Empty(_fabrica.SetsUsados);
+
+        var (codigoC, consulta) = await Consultar(CarpetaClientes.ClaveProduccion, r.TrackID);
+        Assert.Equal(HttpStatusCode.OK, codigoC);
+        Assert.Equal("00", consulta.statusCode);
     }
 
     [Fact]

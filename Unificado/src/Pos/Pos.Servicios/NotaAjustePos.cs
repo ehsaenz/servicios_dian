@@ -169,6 +169,7 @@ namespace DIAN.Pos.Servicios
             var software = _tenant.ObtenerSoftware(TipoSoftware.DocumentoEquivalente)
                            ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_EQUIVALENTE no están bien configurados");
             var habilitacion = _tenant.EsHabilitacion(TipoSoftware.DocumentoEquivalente);
+            var usaSet = habilitacion && !string.IsNullOrEmpty(software.TestSetId);
             var (generador, nota, xml) = Construir(de, software, habilitacion);
             var id = "NATP-" + de.Numero;
             var ruta = _rutas.Xml(id);
@@ -210,7 +211,7 @@ namespace DIAN.Pos.Servicios
                 var respuesta = transporte.Enviar(firmado, id);
                 respuesta.UUID = nota.UUID.Value;
                 respuesta.StrQR = generador.GenerarTextoQR();
-                if (string.IsNullOrEmpty(respuesta.TrackID)) respuesta.TrackID = nota.UUID.Value;
+                if (!usaSet) respuesta.TrackID = nota.UUID.Value;
                 return respuesta;
             }
         }
