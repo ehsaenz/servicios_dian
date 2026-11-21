@@ -9,6 +9,8 @@ namespace DIAN.Pos.Servicios.Documentos
     /// <summary>
     /// Almacén de documentos de UN cliente, en archivos: <c>documentos\{numero}.json</c> (estado), <c>.xml</c> (firmado) y
     /// <c>-respuesta.xml</c> (ApplicationResponse de la DIAN). Un solo proceso escribe; el candado es por proceso.
+    /// Los registros se mantienen en memoria (índice): se leen del disco una sola vez y cada <see cref="Guardar"/> actualiza
+    /// la copia y el archivo. Las lecturas devuelven copias, así que un llamador no altera el índice sin guardar.
     /// </summary>
     public sealed class AlmacenDocumentos
     {
@@ -16,6 +18,8 @@ namespace DIAN.Pos.Servicios.Documentos
         private static readonly JsonSerializerOptions Opciones = new JsonSerializerOptions { WriteIndented = true };
 
         private readonly string _carpeta;
+        private readonly Dictionary<string, DocumentoRegistro> _indice = new Dictionary<string, DocumentoRegistro>(StringComparer.Ordinal);
+        private bool _cargado;
 
         public AlmacenDocumentos(string carpetaCliente)
         {
@@ -24,12 +28,32 @@ namespace DIAN.Pos.Servicios.Documentos
 
         private string Ruta(string numero, string sufijo) => Path.Combine(_carpeta, Nombre(numero) + sufijo);
 
+        // Carga inicial del índice desde los .json. Debe llamarse dentro del candado.
+        private void CargarSiFalta()
+        {
+            if (_cargado) return;
+            if (Directory.Exists(_carpeta))
+            {
+                foreach (var archivo in Directory.GetFiles(_carpeta, "*.json"))
+                {
+                    var registro = JsonSerializer.Deserialize<DocumentoRegistro>(File.ReadAllText(archivo));
+                    if (registro != null) _indice[Path.GetFileNameWithoutExtension(archivo)] = registro;
+                }
+            }
+
+            _cargado = true;
+        }
+
+        // Copia independiente: serializar y volver a leer evita que el llamador altere el índice sin guardar.
+        private static DocumentoRegistro Copia(DocumentoRegistro registro) =>
+            JsonSerializer.Deserialize<DocumentoRegistro>(JsonSerializer.Serialize(registro))!;
+
         public DocumentoRegistro? Buscar(string numero)
         {
             lock (Candado)
             {
-                var archivo = Ruta(numero, ".json");
-                return File.Exists(archivo) ? JsonSerializer.Deserialize<DocumentoRegistro>(File.ReadAllText(archivo)) : null;
+                CargarSiFalta();
+                return _indice.TryGetValue(Nombre(numero), out var registro) ? Copia(registro) : null;
             }
         }
 
@@ -41,6 +65,7 @@ namespace DIAN.Pos.Servicios.Documentos
         {
             lock (Candado)
             {
+                CargarSiFalta();
                 Directory.CreateDirectory(_carpeta);
                 if (esCambioParaElERP || registro.Secuencia == 0)
                 {
@@ -51,6 +76,7 @@ namespace DIAN.Pos.Servicios.Documentos
 
                 registro.FechaActualizado = DateTime.UtcNow;
                 File.WriteAllText(Ruta(registro.Numero, ".json"), JsonSerializer.Serialize(registro, Opciones));
+                _indice[Nombre(registro.Numero)] = Copia(registro);
                 return registro;
             }
         }
@@ -78,12 +104,12 @@ namespace DIAN.Pos.Servicios.Documentos
         {
             lock (Candado)
             {
-                if (!Directory.Exists(_carpeta)) return new List<DocumentoRegistro>();
-                return Directory.GetFiles(_carpeta, "*.json")
-                    .Select(f => JsonSerializer.Deserialize<DocumentoRegistro>(File.ReadAllText(f))!)
+                CargarSiFalta();
+                return _indice.Values
                     .Where(d => d.SecuenciaCambio > cursor)
                     .OrderBy(d => d.SecuenciaCambio)
                     .Take(Math.Max(1, limite))
+                    .Select(Copia)
                     .ToList();
             }
         }
@@ -92,8 +118,8 @@ namespace DIAN.Pos.Servicios.Documentos
         {
             lock (Candado)
             {
-                if (!Directory.Exists(_carpeta)) return new List<DocumentoRegistro>();
-                return Directory.GetFiles(_carpeta, "*.json").Select(f => JsonSerializer.Deserialize<DocumentoRegistro>(File.ReadAllText(f))!).ToList();
+                CargarSiFalta();
+                return _indice.Values.Select(Copia).ToList();
             }
         }
 

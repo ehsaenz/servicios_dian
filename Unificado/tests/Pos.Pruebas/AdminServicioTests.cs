@@ -48,7 +48,8 @@ public sealed class EntornoAdmin : IDisposable
         return cert.Export(X509ContentType.Pfx, clave);
     }
 
-    public static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
+    // PNG de 1x1 píxel bien formado (el logo se valida por estructura, no solo por firma).
+    public static readonly byte[] Png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 }
 
 public class AdminServicioTests : IDisposable
@@ -252,7 +253,7 @@ public class AdminServicioTests : IDisposable
         Assert.Equal("logo-MAT-001.png", sucursal.ArchivoLogo);
 
         // Cambiar el formato del logo reemplaza el archivo anterior.
-        await _e.Admin.SubirLogoSucursalAsync(Usuario, "A", "MAT-001", "norte.jpg", new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4 });
+        await _e.Admin.SubirLogoSucursalAsync(Usuario, "A", "MAT-001", "norte.jpg", new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x02, 0xFF, 0xDA, 0x00, 0x02, 0x01, 0x02, 0xFF, 0xD9 });
         Assert.Equal("logo-MAT-001.jpg", (await _e.Admin.ObtenerAsync("A"))!.Sucursales[0].ArchivoLogo);
         Assert.False(File.Exists(_e.Almacen.RutaArchivo("A", "logo-MAT-001.png")));
 
@@ -292,7 +293,7 @@ public class AdminServicioTests : IDisposable
     public async Task El_perfil_de_impresion_se_busca_por_matricula_y_cae_al_logo_del_cliente()
     {
         await _e.Admin.CrearAsync(Usuario, "A", Emisor(razon: "CLIENTE A SAS"));
-        var logoCliente = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 1, 1, 1 };
+        var logoCliente = EntornoAdmin.Png;
         await _e.Admin.SubirLogoAsync(Usuario, "A", "logo.png", logoCliente);
         await _e.Admin.GuardarSucursalAsync(Usuario, "A", "MAT-001", "Sucursal Norte", "Responsable de IVA");
         await _e.Admin.SubirLogoSucursalAsync(Usuario, "A", "MAT-001", "norte.png", EntornoAdmin.Png);

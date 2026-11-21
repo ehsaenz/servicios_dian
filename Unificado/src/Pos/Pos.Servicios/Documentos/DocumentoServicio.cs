@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -41,11 +42,28 @@ namespace DIAN.Pos.Servicios.Documentos
 
         private bool Habilitacion => _tenant.EsHabilitacion(TipoSoftware.FacturacionElectronica);
 
+        // Un candado por documento (cliente + número). Impide que Agregar, Procesar, el reintento manual y el
+        // mantenimiento envíen o re-firmen el mismo documento a la vez. Es por proceso: con varias instancias haría falta
+        // un candado distribuido (ver docs/desarrollo/problemas-conocidos.md).
+        private static readonly ConcurrentDictionary<string, object> CandadosDocumento = new ConcurrentDictionary<string, object>();
+
+        private static object CandadoDe(string tenantId, string numero) =>
+            CandadosDocumento.GetOrAdd(tenantId + "|" + (numero ?? string.Empty), _ => new object());
+
+        /// <summary>Recibe un documento (ver <see cref="AgregarSinCandado"/>), exclusivo por número.</summary>
+        public DocumentoRegistro Agregar(DocumentoDian doc)
+        {
+            lock (CandadoDe(_tenant.Id, doc?.Numero ?? string.Empty))
+            {
+                return AgregarSinCandado(doc);
+            }
+        }
+
         /// <summary>
         /// Recibe un documento. Lo valida y lo traduce al instante (si no es válido lanza <see cref="DocumentoNoTraducibleException"/>
         /// y no se guarda nada). Es idempotente por número: si ya existe y no fue rechazado ni falló, devuelve el existente.
         /// </summary>
-        public DocumentoRegistro Agregar(DocumentoDian doc)
+        private DocumentoRegistro AgregarSinCandado(DocumentoDian doc)
         {
             var software = _tenant.ObtenerSoftware(TipoSoftware.FacturacionElectronica)
                            ?? throw new DocumentoNoTraducibleException("El cliente no tiene configurado el software de facturación electrónica.");
@@ -107,8 +125,16 @@ namespace DIAN.Pos.Servicios.Documentos
             return _almacen.Guardar(registro);
         }
 
-        /// <summary>Envía a la DIAN un documento recibido (o reintenta uno rechazado o con error) y guarda la respuesta.</summary>
+        /// <summary>Envía a la DIAN un documento recibido (o reintenta uno rechazado o con error), exclusivo por número. Guarda la respuesta.</summary>
         public DocumentoRegistro Procesar(string numero)
+        {
+            lock (CandadoDe(_tenant.Id, numero))
+            {
+                return ProcesarSinCandado(numero);
+            }
+        }
+
+        private DocumentoRegistro ProcesarSinCandado(string numero)
         {
             var registro = _almacen.Buscar(numero) ?? throw new InvalidOperationException($"No existe el documento {numero}.");
             if (registro.Estado == EstadoDocumento.Aprobado) return registro;

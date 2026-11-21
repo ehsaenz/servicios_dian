@@ -65,11 +65,26 @@ namespace DIAN.Admin.Web
                 items.Add(new ItemProduccion("Certificado de firma", ResultadoItem.Cumplido, "Vigente hasta " + c.CertificadoVenceUtc?.ToString("yyyy-MM-dd") + "."));
             }
 
-            // 3. Software de facturación electrónica: habilitado y luego el de producción
-            var fe = c.Software.Where(s => s.TipoSoftware == TipoSoftware.FacturacionElectronica).ToList();
-            items.Add(fe.Count == 0
-                ? new ItemProduccion("Software de facturación electrónica", ResultadoItem.Pendiente, "Falta registrar el software (identificador y PIN).")
-                : new ItemProduccion("Software de facturación electrónica", ResultadoItem.Cumplido, "Registrado."));
+            // 3. Software registrado por módulo. Cada módulo tiene su propio set de pruebas: el de facturación se verifica
+            // abajo; los demás aún no se verifican en esta lista y quedan pendientes (bloquean la producción).
+            var modulos = c.Software.ToList();
+            var fe = modulos.Where(s => s.TipoSoftware == TipoSoftware.FacturacionElectronica).ToList();
+            if (modulos.Count == 0)
+            {
+                items.Add(new ItemProduccion("Software de facturación electrónica", ResultadoItem.Pendiente, "Falta registrar el software (identificador y PIN)."));
+            }
+            else if (fe.Count > 0)
+            {
+                items.Add(new ItemProduccion("Software de facturación electrónica", ResultadoItem.Cumplido, "Registrado."));
+            }
+
+            foreach (var s in modulos.Where(s => s.TipoSoftware != TipoSoftware.FacturacionElectronica))
+            {
+                var nombre = NombreModulo(s.TipoSoftware);
+                items.Add(new ItemProduccion("Software de " + nombre, ResultadoItem.Cumplido, "Registrado."));
+                items.Add(new ItemProduccion("Set de pruebas de " + nombre, ResultadoItem.Pendiente,
+                    "Aún no se verifica el set de pruebas de este módulo desde la lista de producción."));
+            }
 
             // 4. Set de pruebas: documentos aprobados por la DIAN de habilitación, por tipo
             int Aprobados(string tipo) => documentos.Count(d => d.Estado == 1 && d.Habilitacion && d.TipoDocDian == tipo);
@@ -77,18 +92,19 @@ namespace DIAN.Admin.Web
             var nc = Aprobados(TipoNotaCredito);
             var nd = Aprobados(TipoNotaDebito);
             var resumen = $"Aprobados en habilitación: {fv} factura(s), {nc} nota(s) crédito, {nd} nota(s) débito.";
-            items.Add(fv == 0
+            if (fe.Count > 0 || modulos.Count == 0) items.Add(fv == 0
                 ? new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Pendiente, "Ninguna factura aprobada en habilitación todavía. " + resumen)
                 : nc == 0 || nd == 0
                     ? new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Aviso, "Faltan notas por probar. " + resumen)
                     : new ItemProduccion("Set de pruebas de la DIAN", ResultadoItem.Cumplido, resumen));
 
-            // 5. Software marcado como producción (con la PIN y el identificador de producción)
-            var enProduccion = fe.Any(s => !s.AmbientePruebas);
-            items.Add(enProduccion
-                ? new ItemProduccion("Software de producción", ResultadoItem.Cumplido, "El software de facturación está marcado como producción.")
-                : new ItemProduccion("Software de producción", ResultadoItem.Pendiente,
-                    "Registre el software de producción (identificador y PIN de producción) y desmarque «Ambiente de pruebas»."));
+            // 5. Todo software registrado debe estar marcado como producción (con su PIN y su identificador de producción)
+            var enPruebas = modulos.Where(s => s.AmbientePruebas).Select(s => NombreModulo(s.TipoSoftware)).ToList();
+            items.Add(modulos.Count > 0 && enPruebas.Count == 0
+                ? new ItemProduccion("Software de producción", ResultadoItem.Cumplido, "Todos los softwares registrados están marcados como producción.")
+                : new ItemProduccion("Software de producción", ResultadoItem.Pendiente, enPruebas.Count > 0
+                    ? "Desmarque «Ambiente de pruebas» en: " + string.Join(", ", enPruebas) + "."
+                    : "Registre el software de producción (identificador y PIN de producción)."));
 
             // 6. Clave de API activa
             items.Add(c.Claves.Any(k => k.Activa)
@@ -104,6 +120,16 @@ namespace DIAN.Admin.Web
         }
 
         /// <summary>Mensaje de lo que impide autorizar producción, o null si no hay impedimentos.</summary>
+        private static string NombreModulo(TipoSoftware tipo) => tipo switch
+        {
+            TipoSoftware.FacturacionElectronica => "facturación electrónica",
+            TipoSoftware.NominaElectronica => "nómina electrónica",
+            TipoSoftware.EventosRadian => "eventos RADIAN",
+            TipoSoftware.DocumentoSoporte => "documento soporte",
+            TipoSoftware.DocumentoEquivalente => "documento equivalente (POS)",
+            _ => tipo.ToString()
+        };
+
         public static string? Impedimentos(IReadOnlyList<ItemProduccion> items)
         {
             var pendientes = items.Where(i => i.Resultado == ResultadoItem.Pendiente).Select(i => i.Titulo).ToList();
