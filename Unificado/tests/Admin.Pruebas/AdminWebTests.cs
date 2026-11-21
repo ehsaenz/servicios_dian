@@ -516,4 +516,20 @@ public class ListaProduccionTests
 
         Assert.Equal(ResultadoItem.Pendiente, item.Resultado);
     }
+
+    [Fact]
+    public void Un_cliente_solo_con_POS_o_Nomina_en_produccion_no_queda_bloqueado_por_facturacion_electronica()
+    {
+        var c = Completo();
+        c.Software.Clear();
+        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.DocumentoEquivalente, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+        c.Software.Add(new SoftwareRegistro { TipoSoftware = TipoSoftware.NominaElectronica, Identificador = Guid.NewGuid().ToString(), AmbientePruebas = false });
+
+        var lista = ListaProduccion.Evaluar(c, Array.Empty<DocumentoVista>(), Ahora);
+
+        Assert.Null(ListaProduccion.Impedimentos(lista));
+        Assert.DoesNotContain(lista, i => i.Titulo == "Software de facturación electrónica");
+        Assert.Equal(ResultadoItem.Aviso, lista.Single(i => i.Titulo == "Set de pruebas de documento equivalente (POS)").Resultado);
+        Assert.Equal(ResultadoItem.Aviso, lista.Single(i => i.Titulo == "Set de pruebas de nómina electrónica").Resultado);
+    }
 }

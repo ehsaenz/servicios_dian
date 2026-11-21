@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,9 +15,13 @@ namespace DIAN.Pos.Servicios.Documentos
     /// </summary>
     public sealed class AlmacenDocumentos
     {
-        private static readonly object Candado = new object();
         private static readonly JsonSerializerOptions Opciones = new JsonSerializerOptions { WriteIndented = true };
 
+        // Una instancia compartida por carpeta de cliente: el índice y el candado deben ser los mismos en todas las
+        // peticiones, porque cada petición crea un DocumentoServicio nuevo.
+        private static readonly ConcurrentDictionary<string, AlmacenDocumentos> Compartidos = new ConcurrentDictionary<string, AlmacenDocumentos>(StringComparer.OrdinalIgnoreCase);
+
+        private readonly object _candado = new object();
         private readonly string _carpeta;
         private readonly Dictionary<string, DocumentoRegistro> _indice = new Dictionary<string, DocumentoRegistro>(StringComparer.Ordinal);
         private bool _cargado;
@@ -24,6 +29,13 @@ namespace DIAN.Pos.Servicios.Documentos
         public AlmacenDocumentos(string carpetaCliente)
         {
             _carpeta = Path.Combine(carpetaCliente, "documentos");
+        }
+
+        /// <summary>Almacén compartido de la carpeta del cliente (mismo índice y mismo candado para todas las peticiones).</summary>
+        public static AlmacenDocumentos Para(string carpetaCliente)
+        {
+            var clave = Path.GetFullPath(Path.Combine(carpetaCliente, "documentos"));
+            return Compartidos.GetOrAdd(clave, _ => new AlmacenDocumentos(carpetaCliente));
         }
 
         private string Ruta(string numero, string sufijo) => Path.Combine(_carpeta, Nombre(numero) + sufijo);
@@ -50,7 +62,7 @@ namespace DIAN.Pos.Servicios.Documentos
 
         public DocumentoRegistro? Buscar(string numero)
         {
-            lock (Candado)
+            lock (_candado)
             {
                 CargarSiFalta();
                 return _indice.TryGetValue(Nombre(numero), out var registro) ? Copia(registro) : null;
@@ -63,7 +75,7 @@ namespace DIAN.Pos.Servicios.Documentos
         /// </param>
         public DocumentoRegistro Guardar(DocumentoRegistro registro, bool esCambioParaElERP = true)
         {
-            lock (Candado)
+            lock (_candado)
             {
                 CargarSiFalta();
                 Directory.CreateDirectory(_carpeta);
@@ -83,7 +95,7 @@ namespace DIAN.Pos.Servicios.Documentos
 
         public void GuardarXml(string numero, string sufijo, byte[] contenido)
         {
-            lock (Candado)
+            lock (_candado)
             {
                 Directory.CreateDirectory(_carpeta);
                 File.WriteAllBytes(Ruta(numero, sufijo), contenido);
@@ -92,7 +104,7 @@ namespace DIAN.Pos.Servicios.Documentos
 
         public byte[]? LeerXml(string numero, string sufijo)
         {
-            lock (Candado)
+            lock (_candado)
             {
                 var archivo = Ruta(numero, sufijo);
                 return File.Exists(archivo) ? File.ReadAllBytes(archivo) : null;
@@ -102,7 +114,7 @@ namespace DIAN.Pos.Servicios.Documentos
         /// <summary>Documentos modificados después del cursor, en orden de cambio.</summary>
         public List<DocumentoRegistro> CambiosDesde(long cursor, int limite)
         {
-            lock (Candado)
+            lock (_candado)
             {
                 CargarSiFalta();
                 return _indice.Values
@@ -116,7 +128,7 @@ namespace DIAN.Pos.Servicios.Documentos
 
         public List<DocumentoRegistro> Todos()
         {
-            lock (Candado)
+            lock (_candado)
             {
                 CargarSiFalta();
                 return _indice.Values.Select(Copia).ToList();

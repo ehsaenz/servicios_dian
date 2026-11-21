@@ -36,7 +36,7 @@ namespace DIAN.Pos.Servicios.Documentos
             _tenant = tenant;
             _certificados = certificados;
             _fabrica = fabrica;
-            _almacen = new AlmacenDocumentos(Path.Combine(carpetaDatos, AlmacenDocumentos.Nombre(tenant.Id)));
+            _almacen = AlmacenDocumentos.Para(Path.Combine(carpetaDatos, AlmacenDocumentos.Nombre(tenant.Id)));
             _registro = registro;
         }
 
@@ -254,8 +254,16 @@ namespace DIAN.Pos.Servicios.Documentos
 
                 if (d.WebhookPendiente && !string.IsNullOrEmpty(_tenant.WebhookUrl) && d.WebhookIntentos < MaximoIntentos && inactivo > Espera(d.WebhookIntentos))
                 {
-                    IntentarWebhook(d);
-                    acciones++;
+                    // Se vuelve a leer dentro del candado: otro envío pudo cambiar el documento desde que se listó.
+                    lock (CandadoDe(_tenant.Id, d.Numero))
+                    {
+                        var actual = _almacen.Buscar(d.Numero);
+                        if (actual != null && actual.WebhookPendiente)
+                        {
+                            IntentarWebhook(actual);
+                            acciones++;
+                        }
+                    }
                 }
             }
 
@@ -344,14 +352,18 @@ namespace DIAN.Pos.Servicios.Documentos
         /// </summary>
         public byte[]? Pdf(string numero)
         {
-            var registro = _almacen.Buscar(numero);
-            if (registro == null || registro.Estado != EstadoDocumento.Aprobado) return null;
+            // Exclusivo por número: no debe pisar el registro si otro envío o aviso del mismo documento está en curso.
+            lock (CandadoDe(_tenant.Id, numero))
+            {
+                var registro = _almacen.Buscar(numero);
+                if (registro == null || registro.Estado != EstadoDocumento.Aprobado) return null;
 
-            var guardado = _almacen.LeerXml(numero, ".pdf");
-            if (guardado != null) return guardado;
+                var guardado = _almacen.LeerXml(numero, ".pdf");
+                if (guardado != null) return guardado;
 
-            GenerarSalidas(registro);
-            return _almacen.LeerXml(numero, ".pdf");
+                GenerarSalidas(registro);
+                return _almacen.LeerXml(numero, ".pdf");
+            }
         }
 
         public DocumentoRegistro? Obtener(string numero) => _almacen.Buscar(numero);

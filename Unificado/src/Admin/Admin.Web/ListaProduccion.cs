@@ -82,8 +82,10 @@ namespace DIAN.Admin.Web
             {
                 var nombre = NombreModulo(s.TipoSoftware);
                 items.Add(new ItemProduccion("Software de " + nombre, ResultadoItem.Cumplido, "Registrado."));
-                items.Add(new ItemProduccion("Set de pruebas de " + nombre, ResultadoItem.Pendiente,
-                    "Aún no se verifica el set de pruebas de este módulo desde la lista de producción."));
+                // Aviso, no Pendiente: esta lista aún no sabe verificar el set de pruebas de este módulo. Si fuera
+                // Pendiente, bloquearía la producción para siempre a cualquier cliente que lo use.
+                items.Add(new ItemProduccion("Set de pruebas de " + nombre, ResultadoItem.Aviso,
+                    "Esta lista aún no verifica el set de pruebas de este módulo; revíselo fuera de ella."));
             }
 
             // 4. Set de pruebas: documentos aprobados por la DIAN de habilitación, por tipo
