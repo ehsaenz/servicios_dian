@@ -57,6 +57,12 @@ Cambios del 2026-11-20 (sin commitear, para revisión):
 
 ## Pendientes
 
+Revisión nocturna (2026-11-21), sin cambios de código:
+
+- Documento soporte (05): autorizado en habilitación (`SEDS-984000502`, bitácora 4.7). Su nota de ajuste (95) también quedó autorizada en habilitación (`SEDS-984000604`, bitácora 4.10).
+- **Brecha:** la API no expone la nota de ajuste de documento soporte (95). `docs/integracion/referencia-api.md` solo lista 05, 20 y 94 en `MetaDatosDE`. Hay que decidir si 95 entra en el alcance.
+- Contenedor `AttachedDocument`: la biblioteca tiene `GeneradorContenedor`, pero el servicio no lo genera. Armarlo desde el XML guardado requiere convertir las partes UBL a `Emisor`/`Adquiriente`, y eso no está verificado. Pendiente de decidir si el ERP necesita `GET contenedor`; el correo ya adjunta XML, respuesta y PDF por separado.
+
 Después del 28 de noviembre de 2026:
 
 - Renombrar `Pos.Api` a `Dian.Api`, porque la API atiende a todos los bloques (FE, POS, nómina, RADIAN, documento soporte), no solo al POS. Toca el servicio `dian-pos-api` en systemd, la configuración de nginx, los scripts de despliegue, la documentación y los proyectos de prueba. Va como cambio aparte y con confirmación previa; no se hace antes de cerrar la lista por bloque.
