@@ -32,3 +32,10 @@ Documento soporte: `POST /api/DocumentoSoporte/EnviarDSNO` con `TipoDocumento` 0
 ## Consecutivos
 
 El ERP pone el consecutivo del documento de prueba dentro del rango de habilitación que la DIAN asignó a ese bloque. La API no inventa consecutivos.
+
+## Glosario: UUID y TrackID
+
+- **UUID** (campo `UUID` en la base y en las respuestas): es el identificador único del documento según su tipo. Para factura es el **CUFE**, para notas crédito y débito el **CUDE**, para documento soporte y su nota el **CUDS**, y para nómina el **CUNE**. Como varios tipos van en la misma tabla, el campo se llama `UUID`.
+- **TrackID**: identificador que devuelve el envío síncrono en habilitación. Es distinto del UUID. Con él se consulta el estado del documento después de esperar unos 20 segundos. Pendiente de verificar en el código: hoy `DocumentoRegistro` no guarda el TrackID y `Procesar` trata el código 98 como error reintentable.
+- En producción, el envío asíncrono devuelve el estado en la misma petición.
+
