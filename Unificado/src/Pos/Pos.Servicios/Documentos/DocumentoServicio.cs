@@ -135,37 +135,9 @@ namespace DIAN.Pos.Servicios.Documentos
 
             var firmado = FirmarDocumento(doc, out _);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            var subida = enviador.EnviarSetPruebas(new List<byte[]> { firmado }, software.TestSetId);
-
-            // La DIAN no aceptó el envío: no hay ZipKey que consultar. Se registra como rechazado con sus mensajes.
-            var errores = subida.ErrorMessageList?.Select(e => (e.DocumentKey + " " + e.ProcessedMessage).Trim()).ToList() ?? new List<string>();
-            if (string.IsNullOrEmpty(subida.ZipKey) || errores.Count > 0)
-            {
-                var sinZip = ResultadoSet.Desde("99", string.Join(" | ", errores.DefaultIfEmpty("La DIAN no devolvió ZipKey.")), subida.ZipKey, doc.Numero);
-                GuardarEstadoSet(sinZip);
-                return sinZip;
-            }
-
-            if (EsperaSet > TimeSpan.Zero) Thread.Sleep(EsperaSet);
-            var dian = enviador.ConsultarDocumentos(subida.ZipKey).FirstOrDefault();
-            var mensaje = dian?.StatusDescription ?? dian?.StatusMessage;
-            if (dian?.StatusCode == "99" && dian.ErrorMessage != null && dian.ErrorMessage.Length > 0)
-            {
-                // Con 99 el detalle de las reglas rechazadas viene en ErrorMessage: se incluye para que el ERP vea cuál falló.
-                mensaje = (mensaje ?? string.Empty) + " | " + string.Join(" | ", dian.ErrorMessage);
-            }
-
-            var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, subida.ZipKey, doc.Numero);
-            GuardarEstadoSet(resultado);
-            return resultado;
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente, "set-facturacion.json", EsperaSet);
         }
 
-        private void GuardarEstadoSet(ResultadoSet resultado)
-        {
-            Directory.CreateDirectory(_carpetaCliente);
-            var archivo = Path.Combine(_carpetaCliente, "set-facturacion.json");
-            File.WriteAllText(archivo, System.Text.Json.JsonSerializer.Serialize(resultado, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-        }
 
         /// <summary>Firma un documento (UBL, CUFE y firma XAdES) sin guardarlo. Lo usan la recepción normal y el envío al set.</summary>
         private byte[] FirmarDocumento(DocumentoDian doc, out string cufe)
