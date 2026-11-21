@@ -27,6 +27,8 @@ El archivo queda en la carpeta de datos del cliente; el panel de administración
 - `400` si falta `TestSetId`, el bloque ya está en producción, el cuerpo es inválido o el identificador no corresponde.
 - `502` si ocurrió un error de comunicación inesperado al contactar la DIAN.
 
+Documento soporte: `POST /api/DocumentoSoporte/EnviarDSNO` con `TipoDocumento` 05 (documento soporte) o 95 (nota de ajuste del documento soporte, que referencia un 05 por su CUDS). Ambos escriben `set-ds.json`.
+
 ## Consecutivos
 
 El ERP pone el consecutivo del documento de prueba dentro del rango de habilitación que la DIAN asignó a ese bloque. La API no inventa consecutivos.

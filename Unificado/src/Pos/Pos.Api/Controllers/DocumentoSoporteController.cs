@@ -29,6 +29,30 @@ namespace DIAN.Pos.Api.Controllers
             }
 
             var tenant = HttpContext.ObtenerTenant();
+
+            // Nota de ajuste del documento soporte (95): mismo endpoint, otro generador.
+            if (de.TipoDocumento.Codigo == "95")
+            {
+                if (Request.EsEnvioSet())
+                {
+                    return EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.NotaAjusteDocumentoSoporte(tenant).ValidarEnSet(de));
+                }
+
+                try
+                {
+                    return Ok(_servicios.NotaAjusteDocumentoSoporte(tenant).Enviar(de));
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    _registro.LogError(ex, "Error enviando nota de ajuste de documento soporte");
+                    return BadRequest($"Ocurrió un error inesperado el documento no se envió: {ex.Message}");
+                }
+            }
+
             if (Request.EsEnvioSet())
             {
                 return EnvioSetHelper.Ejecutar(this, _registro, () => _servicios.DocumentoSoporte(tenant).ValidarEnSet(de));

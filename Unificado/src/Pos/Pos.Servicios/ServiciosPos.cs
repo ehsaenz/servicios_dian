@@ -48,6 +48,11 @@ namespace DIAN.Pos.Servicios
             };
         }
 
+        public NotaAjusteDocumentoSoporteServicio NotaAjusteDocumentoSoporte(TenantConfig tenant)
+        {
+            return new NotaAjusteDocumentoSoporteServicio(tenant, _certificados, _fabrica, _carpetaDatos, EsperaSetPruebas, _registros.CreateLogger<NotaAjusteDocumentoSoporteServicio>());
+        }
+
         public DocumentoEquivalenteServicio DocumentoEquivalente(TenantConfig tenant)
         {
             return new DocumentoEquivalenteServicio(tenant, _certificados, _fabrica, _carpetaDatos, EsperaSetPruebas, _registros.CreateLogger<DocumentoEquivalenteServicio>());
