@@ -94,7 +94,7 @@ namespace DIAN.Pos.Servicios
 
             ds.AddDatosSoftware(_tenant.Emisor.Nit, software.Identificador, software.PIN);
 
-            if (string.IsNullOrEmpty(ds.Proveedor.Identificacion))
+            if (ds.Proveedor == null || string.IsNullOrEmpty(ds.Proveedor.Identificacion))
             {
                 ds.Proveedor = new Proveedor
                 {
@@ -108,7 +108,7 @@ namespace DIAN.Pos.Servicios
                     NumeroTelefonico = ds.Emisor.NumeroTelefonico,
                     RegimenFiscal = ds.Emisor.RegimenFiscal,
                     ResponsabilidadTributaria = ds.Emisor.ResponsabilidadTributaria,
-                    Nombre = ds.Emisor.DatosComerciales.NombreComercial ?? ds.Emisor.RazonSocial
+                    Nombre = ds.Emisor.DatosComerciales?.NombreComercial ?? ds.Emisor.RazonSocial
                 };
             }
 
@@ -126,8 +126,11 @@ namespace DIAN.Pos.Servicios
                 .AgregarLineas(ds.Items)
                 .ConTotales(ds.Totales)
                 .ConDetallePago(ds.DetallePago)
-                .AsignarCUDS(software.PIN)
-                .ConPeriodoFacturacion(ds.Periodo);
+                .AsignarCUDS(software.PIN);
+
+            // El periodo es opcional y el generador lo desreferencia sin comprobar: solo se pasa si viene.
+            // Mismo criterio que NotaAjusteDocumentoSoporteServicio.
+            if (ds.Periodo != null) generador.ConPeriodoFacturacion(ds.Periodo);
 
             factura = generador.Obtener();
             xml = factura.SerializeXmlDocument().ToXmlString();

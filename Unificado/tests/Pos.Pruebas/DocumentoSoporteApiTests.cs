@@ -147,6 +147,19 @@ public class DocumentoSoporteApiTests : IClassFixture<CarpetaClientes>, IDisposa
     }
 
     [Fact]
+    public async Task Un_documento_soporte_sin_periodo_se_envia_igual()
+    {
+        // El periodo de facturación es opcional: un ERP que no lo use no debe romper el envío.
+        var meta = Documento("900000001", "CLIENTE A SAS");
+        meta.Periodo = null;
+
+        var respuesta = await Enviar(CarpetaClientes.ClaveA, meta);
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        Assert.Equal("00", (await respuesta.Content.ReadFromJsonAsync<ResponseDian>(Json))!.statusCode);
+    }
+
+    [Fact]
     public async Task Cada_cliente_firma_y_envia_con_su_propio_certificado_y_siempre_a_habilitacion()
     {
         var a = await Enviar(CarpetaClientes.ClaveA, Documento("900000001", "CLIENTE A SAS"));
