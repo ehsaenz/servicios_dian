@@ -411,6 +411,33 @@ public class AnonimizadorTests : IDisposable
     }
 
     [Fact]
+    public void Una_factura_a_persona_natural_se_traduce_a_UBL()
+    {
+        // El generador usa Persona.DocumentoIdentificacion.TipoFiscal y hace Trim() sobre los apellidos.
+        // Si el traductor no los rellena, cualquier receptor persona natural rompe con NullReferenceException.
+        var carpeta = ResolverCarpetaMuestrasRepo();
+        Assert.NotNull(carpeta);
+        var doc = JObject.Parse(File.ReadAllText(Path.Combine(carpeta!, "factura-qa-fv016.json"), Encoding.UTF8))
+            .ToObject<DocumentoDian>()!;
+
+        doc.Receptor.TipoPersona = "NATURAL";
+        doc.Receptor.TipoIdDian = "13";   // cédula de ciudadanía
+
+        var parametros = new ParametrosEmision
+        {
+            Ambiente = AmbienteDestino.PRUEBAS,
+            SoftwareNit = doc.Emisor.NIT,
+            SoftwareIdentificador = "00000000-0000-0000-0000-000000000000",
+            SoftwarePin = "12345"
+        };
+
+        var factura = TraductorFactura.Factura(doc, parametros);
+
+        Assert.NotEmpty(factura.UUID.Value);
+        Assert.Contains("<cbc:ID", factura.SerializeXmlDocument().ToXmlString());
+    }
+
+    [Fact]
     public void Factura_qa_anonimizada_se_traduce_a_UBL_sin_errores_y_sin_credenciales()
     {
         var carpetaMuestrasRepo = ResolverCarpetaMuestrasRepo();

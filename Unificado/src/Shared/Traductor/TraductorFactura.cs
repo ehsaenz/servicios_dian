@@ -165,10 +165,15 @@ namespace DIAN.Traduccion
 
         private static Persona? PersonaNatural(persona p) => EsJuridica(p) ? null : new Persona
         {
-            PrimerNombre = p.PrimerNombre,
-            SegundoNombre = p.SegundoNombre,
-            PrimerApellido = p.PrimerApellido,
-            SegundoApellido = p.SegundoApellido,
+            // El generador usa DocumentoIdentificacion.TipoFiscal y hace Trim() sobre los apellidos:
+            // sin esto, cualquier receptor persona natural rompe con NullReferenceException.
+            DocumentoIdentificacion = DocumentoIdentificacion.GetFromTipoFiscal(
+                string.IsNullOrWhiteSpace(p.TipoIdDian) ? "13" : p.TipoIdDian.Trim())
+                ?? DocumentoIdentificacion.CEDULA_CIUDADANIA,
+            PrimerNombre = p.PrimerNombre ?? string.Empty,
+            SegundoNombre = p.SegundoNombre ?? string.Empty,
+            PrimerApellido = p.PrimerApellido ?? string.Empty,
+            SegundoApellido = p.SegundoApellido ?? string.Empty,
             NumeroIdentificacion = p.NIT
         };
 
