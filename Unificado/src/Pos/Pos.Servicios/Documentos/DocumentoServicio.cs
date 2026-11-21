@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using DIAN.Impresion;
 using DIAN.Tenants;
 using DIAN.Traduccion;
@@ -21,6 +22,23 @@ namespace DIAN.Pos.Servicios.Documentos
     /// lo traduce a UBL, lo firma, lo envía a la DIAN y guarda el resultado. Solo un documento aprobado por la DIAN
     /// (validación previa) llega al estado <see cref="EstadoDocumento.Aprobado"/>.
     /// </summary>
+
+    /// <summary>
+    /// Resultado de un envío al set de pruebas. Estado: "aceptado" (la DIAN confirma el set: código 2 y «se encuentra Aceptado»),
+    /// "rechazado" (código 99) o "en_proceso" (cualquier otra cosa: la DIAN aún no decide).
+    /// </summary>
+    public sealed record ResultadoSet(string Estado, string Mensaje, string ZipKey, string Numero, DateTime FechaUtc)
+    {
+        public static ResultadoSet Desde(string? codigo, string? mensaje, string? zipKey, string numero)
+        {
+            var texto = mensaje ?? string.Empty;
+            var estado = codigo?.Trim() == "2" && texto.Contains("se encuentra Aceptado", StringComparison.OrdinalIgnoreCase) ? "aceptado"
+                : codigo?.Trim() == "99" ? "rechazado"
+                : "en_proceso";
+            return new ResultadoSet(estado, texto, zipKey ?? string.Empty, numero, DateTime.UtcNow);
+        }
+    }
+
     public sealed class DocumentoServicio
     {
         private readonly TenantConfig _tenant;
@@ -29,6 +47,10 @@ namespace DIAN.Pos.Servicios.Documentos
         private readonly AlmacenDocumentos _almacen;
         private readonly ILogger _registro;
         private readonly SalidasDocumento _salidas;
+        private readonly string _carpetaCliente;
+
+        /// <summary>Espera antes de consultar el resultado de un envío al set de pruebas (la DIAN tarda unos segundos).</summary>
+        public TimeSpan EsperaSet { get; set; } = TimeSpan.FromSeconds(5);
 
         public DocumentoServicio(TenantConfig tenant, CertificadoCache certificados, IFabricaEnviadorDian fabrica, string carpetaDatos, ILogger registro, SalidasDocumento? salidas = null)
         {
@@ -36,7 +58,8 @@ namespace DIAN.Pos.Servicios.Documentos
             _tenant = tenant;
             _certificados = certificados;
             _fabrica = fabrica;
-            _almacen = AlmacenDocumentos.Para(Path.Combine(carpetaDatos, AlmacenDocumentos.Nombre(tenant.Id)));
+            _carpetaCliente = Path.Combine(carpetaDatos, AlmacenDocumentos.Nombre(tenant.Id));
+            _almacen = AlmacenDocumentos.Para(_carpetaCliente);
             _registro = registro;
         }
 
@@ -65,8 +88,10 @@ namespace DIAN.Pos.Servicios.Documentos
         /// </summary>
         private DocumentoRegistro AgregarSinCandado(DocumentoDian doc)
         {
-            var software = _tenant.ObtenerSoftware(TipoSoftware.FacturacionElectronica)
-                           ?? throw new DocumentoNoTraducibleException("El cliente no tiene configurado el software de facturación electrónica.");
+            if (_tenant.ObtenerSoftware(TipoSoftware.FacturacionElectronica) == null)
+            {
+                throw new DocumentoNoTraducibleException("El cliente no tiene configurado el software de facturación electrónica.");
+            }
 
             if (doc == null || string.IsNullOrWhiteSpace(doc.Numero))
             {
@@ -79,6 +104,58 @@ namespace DIAN.Pos.Servicios.Documentos
                 return existente;
             }
 
+            var firmado = FirmarDocumento(doc, out var cufe);
+
+            var registro = existente ?? new DocumentoRegistro { FechaRecibido = DateTime.UtcNow };
+            registro.Numero = doc.Numero;
+            registro.TipoDocDian = doc.TipoDocDian;
+            registro.TipoDocErp = doc.TipoDocErp ?? string.Empty;
+            registro.Matricula = doc.Emisor?.MatriculaMercantil ?? string.Empty;
+            registro.CUFE = cufe;
+            registro.Estado = EstadoDocumento.Recibido;
+            registro.Mensaje = string.Empty;
+            registro.Errores = new List<string>();
+            registro.Habilitacion = Habilitacion;
+            _almacen.GuardarXml(doc.Numero, ".xml", firmado);
+            return _almacen.Guardar(registro);
+        }
+
+        /// <summary>
+        /// Envío al set de pruebas de facturación (solo habilitación, con TestSetId): firma el documento, lo envía con
+        /// EnviarSetPruebas y consulta el resultado. NO guarda el documento en el almacén: no entra en reintentos ni en la
+        /// lista del ERP. El estado queda en set-facturacion.json, que el panel de administración solo lee.
+        /// </summary>
+        public ResultadoSet ValidarEnSet(DocumentoDian doc)
+        {
+            if (!Habilitacion) throw new DocumentoNoTraducibleException("El envío al set de pruebas solo aplica en habilitación.");
+            var software = _tenant.ObtenerSoftware(TipoSoftware.FacturacionElectronica)
+                           ?? throw new DocumentoNoTraducibleException("El cliente no tiene configurado el software de facturación electrónica.");
+            if (string.IsNullOrEmpty(software.TestSetId)) throw new DocumentoNoTraducibleException("El software de facturación no tiene TestSetId (identificador del set de pruebas).");
+            if (doc == null || string.IsNullOrWhiteSpace(doc.Numero)) throw new DocumentoNoTraducibleException("El documento no trae número.");
+
+            var firmado = FirmarDocumento(doc, out _);
+            var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
+            var subida = enviador.EnviarSetPruebas(new List<byte[]> { firmado }, software.TestSetId);
+            if (EsperaSet > TimeSpan.Zero) Thread.Sleep(EsperaSet);
+
+            var dian = enviador.ConsultarDocumentos(subida.ZipKey).FirstOrDefault();
+            var resultado = ResultadoSet.Desde(dian?.StatusCode, dian?.StatusDescription ?? dian?.StatusMessage, subida.ZipKey, doc.Numero);
+            GuardarEstadoSet(resultado);
+            return resultado;
+        }
+
+        private void GuardarEstadoSet(ResultadoSet resultado)
+        {
+            Directory.CreateDirectory(_carpetaCliente);
+            var archivo = Path.Combine(_carpetaCliente, "set-facturacion.json");
+            File.WriteAllText(archivo, System.Text.Json.JsonSerializer.Serialize(resultado, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        /// <summary>Firma un documento (UBL, CUFE y firma XAdES) sin guardarlo. Lo usan la recepción normal y el envío al set.</summary>
+        private byte[] FirmarDocumento(DocumentoDian doc, out string cufe)
+        {
+            var software = _tenant.ObtenerSoftware(TipoSoftware.FacturacionElectronica)
+                           ?? throw new DocumentoNoTraducibleException("El cliente no tiene configurado el software de facturación electrónica.");
             var parametros = new ParametrosEmision
             {
                 Ambiente = Habilitacion ? AmbienteDestino.PRUEBAS : AmbienteDestino.PRODUCCION,
@@ -88,7 +165,6 @@ namespace DIAN.Pos.Servicios.Documentos
             };
 
             var firma = new FirmaElectronica { RolFirmante = RolFirmante.EMISOR, Certificado = _certificados.Obtener(_tenant) };
-            string cufe;
             byte[] firmado;
             switch (doc.TipoDocDian)
             {
@@ -110,19 +186,7 @@ namespace DIAN.Pos.Servicios.Documentos
                 default:
                     throw new DocumentoNoTraducibleException($"El tipo de documento {doc.TipoDocDian} no está soportado (solo 01, 91 y 92).");
             }
-
-            var registro = existente ?? new DocumentoRegistro { FechaRecibido = DateTime.UtcNow };
-            registro.Numero = doc.Numero;
-            registro.TipoDocDian = doc.TipoDocDian;
-            registro.TipoDocErp = doc.TipoDocErp ?? string.Empty;
-            registro.Matricula = doc.Emisor?.MatriculaMercantil ?? string.Empty;
-            registro.CUFE = cufe;
-            registro.Estado = EstadoDocumento.Recibido;
-            registro.Mensaje = string.Empty;
-            registro.Errores = new List<string>();
-            registro.Habilitacion = Habilitacion;
-            _almacen.GuardarXml(doc.Numero, ".xml", firmado);
-            return _almacen.Guardar(registro);
+            return firmado;
         }
 
         /// <summary>Envía a la DIAN un documento recibido (o reintenta uno rechazado o con error), exclusivo por número. Guarda la respuesta.</summary>

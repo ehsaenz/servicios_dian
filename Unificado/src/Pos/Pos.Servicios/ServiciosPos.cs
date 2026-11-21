@@ -34,7 +34,10 @@ namespace DIAN.Pos.Servicios
 
         public Documentos.DocumentoServicio Documentos(TenantConfig tenant)
         {
-            return new Documentos.DocumentoServicio(tenant, _certificados, _fabrica, _carpetaDatos, _registros.CreateLogger<Documentos.DocumentoServicio>(), Salidas);
+            return new Documentos.DocumentoServicio(tenant, _certificados, _fabrica, _carpetaDatos, _registros.CreateLogger<Documentos.DocumentoServicio>(), Salidas)
+            {
+                EsperaSet = EsperaSetPruebas
+            };
         }
 
         public DocumentoSoporteServicio DocumentoSoporte(TenantConfig tenant)

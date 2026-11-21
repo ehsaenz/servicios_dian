@@ -44,6 +44,7 @@ Antes de pedir el paso a producción, recorra la [lista de verificación](lista-
 | [pdf-y-correo.md](pdf-y-correo.md) | PDF oficial, plantillas, logo y correo |
 | [webhook.md](webhook.md) | Formato exacto del aviso, firma HMAC, reintentos, idempotencia |
 | [ambientes.md](ambientes.md) | Habilitación y producción, tiempos de espera, set de pruebas |
+| [set-de-pruebas-produccion.md](set-de-pruebas-produccion.md) | Paso del ERP para validar el set antes de producción (encabezado `X-Envio-Set`) |
 | [lista-de-verificacion.md](lista-de-verificacion.md) | Checklist de certificación del integrador |
 | [ejemplos/](ejemplos/README.md) | JSON completos y código en curl, C#, Node y Python |
 

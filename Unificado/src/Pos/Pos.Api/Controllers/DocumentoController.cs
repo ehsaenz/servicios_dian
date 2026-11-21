@@ -47,6 +47,20 @@ namespace DIAN.Pos.Api.Controllers
             }
 
             var servicio = _servicios.Documentos(HttpContext.ObtenerTenant());
+
+            // Envío al set de pruebas (lo pide el ERP al pasar a producción): no guarda el documento en el almacén.
+            if (string.Equals(Request.Headers["X-Envio-Set"].ToString(), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    return Ok(servicio.ValidarEnSet(doc!));
+                }
+                catch (DocumentoNoTraducibleException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+            }
+
             DocumentoRegistro registro;
             try
             {
