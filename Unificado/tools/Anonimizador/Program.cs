@@ -27,7 +27,7 @@ try
 {
     var anonimizador = new AnonimizadorMuestras();
     var resumen = anonimizador.AnonimizarDirectorio(origen, destino);
-    Console.WriteLine($"Anonimizados {resumen.ArchivosProcesados} archivos ({resumen.RegistrosProcesados} registros) en: {resumen.CarpetaDestino}");
+    Console.WriteLine($"Anonimizados {resumen.ArchivosProcesados} archivos ({resumen.RegistrosProcesados} registros; FV aceptadas: {resumen.FacturasAceptadas}, descartadas: {resumen.FacturasDescartadas}) en: {resumen.CarpetaDestino}");
     return 0;
 }
 catch (Exception ex)

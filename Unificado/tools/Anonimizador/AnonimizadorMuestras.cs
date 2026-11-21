@@ -11,7 +11,13 @@ namespace Anonimizador;
 /// <summary>
 /// Resultado de ejecutar la anonimización sobre un directorio de muestras JSON.
 /// </summary>
-public sealed record ResumenAnonimizacion(int ArchivosProcesados, int RegistrosProcesados, string CarpetaDestino);
+public sealed record ResumenAnonimizacion(
+    int ArchivosProcesados,
+    int RegistrosProcesados,
+    string CarpetaDestino,
+    int FacturasAceptadas = 0,
+    int FacturasDescartadas = 0,
+    IReadOnlyList<string>? MotivosDescarte = null);
 
 /// <summary>
 /// Anonimiza archivos JSON exportados desde QuantyERP y documentos <c>DocumentoDian</c>
@@ -90,6 +96,8 @@ public sealed class AnonimizadorMuestras
             nodosPorArchivo.Add((Path.GetFileName(ruta), nodo));
         }
 
+        var (aceptadas, descartadas, motivos) = FiltrarMuestrasIncompletas(nodosPorArchivo);
+
         var totalRegistros = 0;
         foreach (var (nombre, nodo) in nodosPorArchivo)
         {
@@ -98,7 +106,248 @@ public sealed class AnonimizadorMuestras
             File.WriteAllText(salida, nodo.ToJsonString(OpcionesJson) + Environment.NewLine, new UTF8Encoding(false));
         }
 
-        return new ResumenAnonimizacion(nodosPorArchivo.Count, totalRegistros, destino);
+        return new ResumenAnonimizacion(nodosPorArchivo.Count, totalRegistros, destino, aceptadas, descartadas, motivos);
+    }
+
+    private static (int Aceptadas, int Descartadas, List<string> Motivos) FiltrarMuestrasIncompletas(
+        List<(string NombreArchivo, JsonNode Nodo)> nodosPorArchivo)
+    {
+        var porNombre = nodosPorArchivo.ToDictionary(
+            x => x.NombreArchivo.ToLowerInvariant(),
+            x => x.Nodo,
+            StringComparer.OrdinalIgnoreCase);
+
+        // Terceros sin CodMunicipio DANE de 5 digitos no pasan validacion de G.
+        HashSet<string>? tercerosValidos = null;
+        if (porNombre.TryGetValue("terceros_clientes.json", out var nodoTerc) && nodoTerc is JsonArray arrTerc)
+        {
+            tercerosValidos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var conservados = new List<JsonNode>();
+            foreach (var fila in arrTerc.OfType<JsonObject>())
+            {
+                var id = LeerTexto(fila, "IdTercero")?.Trim();
+                var mun = LeerTexto(fila, "CodMunicipio")?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(id) && Regex.IsMatch(mun, @"^\d{5}$"))
+                {
+                    tercerosValidos.Add(id);
+                    conservados.Add(fila);
+                }
+            }
+            ReemplazarContenidoArray(arrTerc, conservados);
+        }
+
+        if (!porNombre.TryGetValue("facturas_fv.json", out var nodoFv) || nodoFv is not JsonArray arrFv)
+        {
+            return (0, 0, new List<string>());
+        }
+
+        HashSet<string>? tiposConResolucionNumerica = null;
+        if (porNombre.TryGetValue("resoluciones.json", out var nodoRes) && nodoRes is JsonArray arrRes)
+        {
+            tiposConResolucionNumerica = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var res in arrRes.OfType<JsonObject>())
+            {
+                var tip = LeerTexto(res, "TipDoc")?.Trim();
+                var num = LeerTexto(res, "NumeroRes")?.Trim();
+                var activa = LeerEntero(res, "Activa") ?? -1;
+                if (!string.IsNullOrEmpty(tip) && activa != 0 && long.TryParse(num, out var nRes) && nRes > 0)
+                {
+                    tiposConResolucionNumerica.Add(tip);
+                }
+            }
+        }
+
+        var arrLineas = porNombre.TryGetValue("facturas_fv_lineas.json", out var nodoLin) ? nodoLin as JsonArray : null;
+        var arrImps = porNombre.TryGetValue("facturas_fv_impuestos.json", out var nodoImp) ? nodoImp as JsonArray : null;
+
+        var lineasPorDocRel = new Dictionary<string, List<JsonObject>>(StringComparer.OrdinalIgnoreCase);
+        if (arrLineas != null)
+        {
+            foreach (var l in arrLineas.OfType<JsonObject>())
+            {
+                var docRel = LeerTexto(l, "DocRelacionado")?.Trim() ?? string.Empty;
+                if (!lineasPorDocRel.TryGetValue(docRel, out var lista))
+                {
+                    lista = new List<JsonObject>();
+                    lineasPorDocRel[docRel] = lista;
+                }
+                lista.Add(l);
+            }
+        }
+
+        var impsPorItem = new Dictionary<string, List<JsonObject>>(StringComparer.OrdinalIgnoreCase);
+        if (arrImps != null)
+        {
+            foreach (var imp in arrImps.OfType<JsonObject>())
+            {
+                var itemId = LeerIdComoTexto(imp, "ItemSalId");
+                if (string.IsNullOrEmpty(itemId)) continue;
+                if (!impsPorItem.TryGetValue(itemId, out var lista))
+                {
+                    lista = new List<JsonObject>();
+                    impsPorItem[itemId] = lista;
+                }
+                lista.Add(imp);
+            }
+        }
+
+        var idsPadRegistrados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fv in arrFv.OfType<JsonObject>())
+        {
+            var idRaw = LeerIdComoTexto(fv, "ID");
+            if (!string.IsNullOrEmpty(idRaw) && long.TryParse(idRaw, out var idVal))
+            {
+                idsPadRegistrados.Add(idVal.ToString().PadLeft(10, '0'));
+            }
+        }
+
+        var facturasValidas = new List<JsonNode>();
+        var lineasValidas = new List<JsonNode>();
+        var impuestosValidos = new List<JsonNode>();
+        var itemsUsados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var motivos = new List<string>();
+        var aceptadas = 0;
+        var descartadas = 0;
+
+        foreach (var fv in arrFv.OfType<JsonObject>())
+        {
+            var numero = LeerTexto(fv, "NumeroDoc")?.Trim() ?? "(sin_numero)";
+            var tipo = LeerTexto(fv, "TipoDocumento")?.Trim() ?? "FV";
+            var codTercero = LeerTexto(fv, "CodTercero")?.Trim() ?? string.Empty;
+            var idNum = LeerIdComoTexto(fv, "ID");
+            var idPad = !string.IsNullOrEmpty(idNum) && long.TryParse(idNum, out var idVal)
+                ? idVal.ToString().PadLeft(10, '0')
+                : string.Empty;
+            var idDocSal = LeerTexto(fv, "IdDocSal")?.Trim() ?? string.Empty;
+
+            var fallos = new List<string>();
+            if (tiposConResolucionNumerica != null && !tiposConResolucionNumerica.Contains(tipo))
+            {
+                fallos.Add("sin_resolucion_numerica");
+            }
+            if (tercerosValidos != null && !tercerosValidos.Contains(codTercero))
+            {
+                fallos.Add("sin_cod_municipio");
+            }
+
+            List<JsonObject>? lineasFv = null;
+            if (arrLineas != null)
+            {
+                if (!string.IsNullOrEmpty(idPad) && lineasPorDocRel.TryGetValue(idPad, out var porId))
+                {
+                    lineasFv = porId;
+                }
+                else if (!string.IsNullOrEmpty(idDocSal)
+                         && !idsPadRegistrados.Contains(idDocSal)
+                         && lineasPorDocRel.TryGetValue(idDocSal, out var porSal))
+                {
+                    lineasFv = porSal;
+                }
+
+                if (lineasFv == null || lineasFv.Count == 0)
+                {
+                    fallos.Add("sin_lineas");
+                }
+                else
+                {
+                    if (lineasFv.Any(l => (LeerDecimal(l, "Cant") ?? 0m) <= 0m || (LeerDecimal(l, "ValorUnit") ?? 0m) <= 0m))
+                    {
+                        fallos.Add("valor_unitario_cero");
+                    }
+
+                    if (arrImps != null)
+                    {
+                        var faltanImps = false;
+                        foreach (var l in lineasFv)
+                        {
+                            var excluido = (LeerEntero(l, "Excluido") ?? 0) != 0;
+                            if (excluido) continue;
+                            var itemId = LeerIdComoTexto(l, "IdItemSal");
+                            if (string.IsNullOrEmpty(itemId) || !impsPorItem.TryGetValue(itemId, out var listaImp) ||
+                                listaImp.Count == 0 || listaImp.Any(im => (LeerDecimal(im, "BaseGravada") ?? 0m) <= 0m))
+                            {
+                                faltanImps = true;
+                                break;
+                            }
+                        }
+                        if (faltanImps)
+                        {
+                            fallos.Add("sin_impuestos");
+                        }
+                    }
+                }
+            }
+
+            if (fallos.Count > 0)
+            {
+                descartadas++;
+                motivos.Add($"{numero}: {string.Join(", ", fallos)}");
+                continue;
+            }
+
+            aceptadas++;
+            facturasValidas.Add(fv);
+            if (lineasFv != null)
+            {
+                foreach (var l in lineasFv)
+                {
+                    var itemId = LeerIdComoTexto(l, "IdItemSal");
+                    if (!string.IsNullOrEmpty(itemId) && !itemsUsados.Add(itemId)) continue;
+                    lineasValidas.Add(l);
+                    if (arrImps != null && !string.IsNullOrEmpty(itemId) && impsPorItem.TryGetValue(itemId, out var listaImp))
+                    {
+                        foreach (var im in listaImp)
+                        {
+                            impuestosValidos.Add(im);
+                        }
+                    }
+                }
+            }
+        }
+
+        ReemplazarContenidoArray(arrFv, facturasValidas);
+        if (arrLineas != null) ReemplazarContenidoArray(arrLineas, lineasValidas);
+        if (arrImps != null) ReemplazarContenidoArray(arrImps, impuestosValidos);
+
+        return (aceptadas, descartadas, motivos);
+    }
+
+    private static void ReemplazarContenidoArray(JsonArray array, List<JsonNode> elementos)
+    {
+        var copias = elementos.Select(e => e.DeepClone()).ToList();
+        array.Clear();
+        foreach (var copia in copias)
+        {
+            array.Add(copia);
+        }
+    }
+
+    private static string? LeerIdComoTexto(JsonObject obj, string propiedad)
+    {
+        if (!obj.TryGetPropertyValue(propiedad, out var node) || node is not JsonValue val) return null;
+        if (val.TryGetValue<string>(out var s)) return s.Trim();
+        if (val.TryGetValue<long>(out var l)) return l.ToString();
+        if (val.TryGetValue<int>(out var i)) return i.ToString();
+        return null;
+    }
+
+    private static int? LeerEntero(JsonObject obj, string propiedad)
+    {
+        if (!obj.TryGetPropertyValue(propiedad, out var node) || node is not JsonValue val) return null;
+        if (val.TryGetValue<int>(out var i)) return i;
+        if (val.TryGetValue<long>(out var l)) return (int)l;
+        if (val.TryGetValue<string>(out var s) && int.TryParse(s, out var p)) return p;
+        return null;
+    }
+
+    private static decimal? LeerDecimal(JsonObject obj, string propiedad)
+    {
+        if (!obj.TryGetPropertyValue(propiedad, out var node) || node is not JsonValue val) return null;
+        if (val.TryGetValue<decimal>(out var d)) return d;
+        if (val.TryGetValue<double>(out var dbl)) return (decimal)dbl;
+        if (val.TryGetValue<long>(out var l)) return l;
+        if (val.TryGetValue<string>(out var s) && decimal.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var p)) return p;
+        return null;
     }
 
     private void RegistrarOriginalesSensibles(JsonNode nodo)

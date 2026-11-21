@@ -88,6 +88,7 @@ public class AnonimizadorTests : IDisposable
           {
             "ID": 10,
             "IdDocSal": "0000000010",
+            "TipoDocumento": "FV",
             "NumeroDoc": "SETP-990000001",
             "CodTercero": "{{AnonimizadorMuestras.NitConsumidorFinal}}",
             "Vendedor": "JPEREZ",
@@ -98,6 +99,7 @@ public class AnonimizadorTests : IDisposable
           {
             "ID": 11,
             "IdDocSal": "0000000011",
+            "TipoDocumento": "FV",
             "NumeroDoc": "SETP-990000002",
             "CodTercero": "{{nitEmpresa}}",
             "Vendedor": "JPEREZ",
@@ -108,6 +110,7 @@ public class AnonimizadorTests : IDisposable
           {
             "ID": 12,
             "IdDocSal": "0000000012",
+            "TipoDocumento": "FV",
             "NumeroDoc": "SETP-990000003",
             "CodTercero": "{{cedulaNatural}}",
             "Vendedor": "MLOPEZ",
@@ -121,6 +124,16 @@ public class AnonimizadorTests : IDisposable
         [
           {
             "IdItemSal": 1,
+            "DocRelacionado": "0000000010",
+            "CodProducto": "PROD99",
+            "Detalle": "ZAPATO MARCA REAL EXCLUSIVA",
+            "Cant": 1.0,
+            "ValorUnit": 50000.0,
+            "DtoDir": 0.0,
+            "Excluido": 0
+          },
+          {
+            "IdItemSal": 2,
             "DocRelacionado": "0000000011",
             "CodProducto": "PROD99",
             "Detalle": "ZAPATO MARCA REAL EXCLUSIVA",
@@ -128,6 +141,35 @@ public class AnonimizadorTests : IDisposable
             "ValorUnit": 150000.0,
             "DtoDir": 0.0,
             "Excluido": 0
+          }
+        ]
+        """);
+
+        File.WriteAllText(Path.Combine(origen, "facturas_fv_impuestos.json"), """
+        [
+          {
+            "Id": 101,
+            "ItemSalId": 1,
+            "ImpuestoId": "01",
+            "TarifaId": "0132",
+            "BaseGravada": 42016.81,
+            "BaseNoGravada": 0.0,
+            "TarifaAplicada": 0.19,
+            "ValorImpuesto": 7983.19,
+            "IncluidoEnPrecio": 1,
+            "OrdenAplicacion": 1
+          },
+          {
+            "Id": 102,
+            "ItemSalId": 2,
+            "ImpuestoId": "01",
+            "TarifaId": "0132",
+            "BaseGravada": 252100.84,
+            "BaseNoGravada": 0.0,
+            "TarifaAplicada": 0.19,
+            "ValorImpuesto": 47899.16,
+            "IncluidoEnPrecio": 1,
+            "OrdenAplicacion": 1
           }
         ]
         """);
@@ -177,7 +219,9 @@ public class AnonimizadorTests : IDisposable
         var anonimizador = new AnonimizadorMuestras();
         var resumen = anonimizador.AnonimizarDirectorio(origen, destino);
 
-        Assert.Equal(6, resumen.ArchivosProcesados);
+        Assert.Equal(7, resumen.ArchivosProcesados);
+        Assert.Equal(2, resumen.FacturasAceptadas);
+        Assert.Equal(1, resumen.FacturasDescartadas);
 
         var textoSalidaTotal = string.Join(
             "\n",
@@ -204,6 +248,10 @@ public class AnonimizadorTests : IDisposable
         var sucursalesOut = JsonNode.Parse(File.ReadAllText(Path.Combine(destino, "sucursales.json")))!.AsArray();
         var resolucionesOut = JsonNode.Parse(File.ReadAllText(Path.Combine(destino, "resoluciones.json")))!.AsArray();
 
+        // La factura sin lineas (ID=12) fue descartada sin inventar importes.
+        Assert.Equal(2, facturasOut.Count);
+        Assert.Equal(2, lineasOut.Count);
+
         // Consumidor final 222222222222 se conserva intacto en terceros y en su factura.
         Assert.Equal(AnonimizadorMuestras.NitConsumidorFinal, tercerosOut[0]!["IdTercero"]!.GetValue<string>());
         Assert.Equal("CONSUMIDOR FINAL", tercerosOut[0]!["Nombre"]!.GetValue<string>());
@@ -219,8 +267,8 @@ public class AnonimizadorTests : IDisposable
 
         // IdProd == CodProducto tras anonimizar e importes intactos.
         var skuAnon = productosOut[0]!["IdProd"]!.GetValue<string>();
-        Assert.Equal(skuAnon, lineasOut[0]!["CodProducto"]!.GetValue<string>());
-        Assert.Equal(150000.0m, lineasOut[0]!["ValorUnit"]!.GetValue<decimal>());
+        Assert.Equal(skuAnon, lineasOut[1]!["CodProducto"]!.GetValue<string>());
+        Assert.Equal(150000.0m, lineasOut[1]!["ValorUnit"]!.GetValue<decimal>());
 
         // ClaveTecnica reemplazada por marcador seguro y logos limpiados.
         Assert.Equal(AnonimizadorMuestras.MarcadorClaveTecnica, resolucionesOut[0]!["ClaveTecnica"]!.GetValue<string>());
@@ -338,6 +386,19 @@ public class AnonimizadorTests : IDisposable
             Assert.Equal("", s!["Logo"]?.GetValue<string>() ?? "");
             Assert.Equal("", s!["LogoFact"]?.GetValue<string>() ?? "");
         });
+
+        // Verifica filtrado sin invencion: solo las 6 FV completas (9 lineas, 9 impuestos) y 9 terceros con CodMunicipio.
+        var fvsAnon = JsonNode.Parse(File.ReadAllText(Path.Combine(carpetaMuestrasRepo, "facturas_fv.json")))!.AsArray();
+        var lineasAnon = JsonNode.Parse(File.ReadAllText(Path.Combine(carpetaMuestrasRepo, "facturas_fv_lineas.json")))!.AsArray();
+        var impsAnon = JsonNode.Parse(File.ReadAllText(Path.Combine(carpetaMuestrasRepo, "facturas_fv_impuestos.json")))!.AsArray();
+        var tercAnon = JsonNode.Parse(File.ReadAllText(Path.Combine(carpetaMuestrasRepo, "terceros_clientes.json")))!.AsArray();
+
+        Assert.Equal(6, fvsAnon.Count);
+        Assert.Equal(9, lineasAnon.Count);
+        Assert.Equal(9, impsAnon.Count);
+        Assert.Equal(9, tercAnon.Count);
+        Assert.All(fvsAnon, f => Assert.Null(f!["Resolucion"]));
+        Assert.All(tercAnon, t => Assert.Matches(@"^\d{5}$", t!["CodMunicipio"]?.GetValue<string>() ?? ""));
     }
 
     private static List<string> ExtraerValoresSensibles(string origen)
