@@ -193,5 +193,16 @@ public class PosApiTests : IClassFixture<CarpetaClientes>, IDisposable
         Assert.Equal("00", tiquete.statusCode);
         Assert.Equal("00", nota.statusCode);
     }
+
+    [Fact]
+    public async Task Con_el_set_ya_aceptado_el_tiquete_devuelve_el_estado_del_set_y_lo_registra_en_disco()
+    {
+        _fabrica.SetYaAceptado = true;
+        var respuesta = await Leer(await EnviarDE(CarpetaClientes.ClaveA, DatosPos.Tiquete("900000001", "CLIENTE A SAS", "EPOS20")));
+
+        Assert.Equal("2", respuesta.statusCode);
+        Assert.Contains("Aceptado", respuesta.statusMessage);
+        Assert.True(File.Exists(Path.Combine(_datos, "A", "XML", "DETP-EPOS20-dian.json")));
+    }
 }
 

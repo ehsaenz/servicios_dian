@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using DIAN.Tenants;
 using eFacturacionColombia_NETCore.Documentos;
@@ -28,6 +29,8 @@ namespace DIAN.Pos.Servicios
         public string XmlSinFirmar(string idDoc) => Xml(idDoc + "-unsigned");
 
         public string AppResponse(string idDoc) => Path.Combine(_xml, Nombres.Seguro(idDoc) + "-appresponse.xml");
+
+        public string RespuestaDian(string idDoc) => Path.Combine(_xml, Nombres.Seguro(idDoc) + "-dian.json");
 
         public void Crear() => Directory.CreateDirectory(_xml);
     }
@@ -81,7 +84,7 @@ namespace DIAN.Pos.Servicios
                 resp.TrackID = dian.XmlDocumentKey ?? subida.ZipKey;
                 resp.UUID = dian.XmlDocumentKey ?? string.Empty;
                 resp.statusCode = dian.StatusCode;
-                resp.statusMessage = dian.StatusDescription;
+                resp.statusMessage = dian.StatusDescription ?? dian.StatusMessage;
                 AgregarMensajes(resp, dian);
                 GuardarAppResponse(resp, dian, idDoc);
                 return resp;
@@ -110,7 +113,7 @@ namespace DIAN.Pos.Servicios
                 var dian = _enviador.ConsultarDocumentos(trackId).FirstOrDefault()
                            ?? throw new InvalidOperationException("La DIAN no devolvió información para ese identificador.");
                 resp.statusCode = dian.StatusCode;
-                resp.statusMessage = dian.StatusDescription;
+                resp.statusMessage = dian.StatusDescription ?? dian.StatusMessage;
                 AgregarMensajes(resp, dian);
                 GuardarAppResponse(resp, dian, idDoc);
                 return resp;
@@ -139,8 +142,24 @@ namespace DIAN.Pos.Servicios
 
         private void GuardarAppResponse(ResponseDian resp, DianResponse dian, string idDoc)
         {
-            if (dian.XmlBase64Bytes == null || string.IsNullOrEmpty(idDoc))
+            if (string.IsNullOrEmpty(idDoc))
             {
+                return;
+            }
+
+            if (dian.XmlBase64Bytes == null)
+            {
+                var mensaje = dian.StatusDescription ?? dian.StatusMessage ?? string.Empty;
+                if (dian.StatusCode == "2" && mensaje.Contains("se encuentra Aceptado", StringComparison.OrdinalIgnoreCase))
+                {
+                    _rutas.Crear();
+                    File.WriteAllText(_rutas.RespuestaDian(idDoc), JsonSerializer.Serialize(new
+                    {
+                        StatusCode = dian.StatusCode,
+                        StatusMessage = mensaje
+                    }));
+                }
+
                 return;
             }
 
