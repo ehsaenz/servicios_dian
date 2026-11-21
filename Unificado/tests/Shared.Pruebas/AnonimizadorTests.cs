@@ -1,7 +1,15 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using Anonimizador;
+using DIAN.Impresion;
+using DIAN.Traduccion;
 using eFacturacionColombia_NETCore.Documentos;
+using eFacturacionColombia_NETCore.Util;
+using FacturacionColombia_Metadatos;
+using FE.Models.Doc;
+using Newtonsoft.Json.Linq;
 
 namespace Shared.Pruebas;
 
@@ -370,7 +378,8 @@ public class AnonimizadorTests : IDisposable
         Assert.NotEmpty(salidaTextos);
         var todoTextoSalida = string.Join("\n", salidaTextos);
 
-        Assert.DoesNotContain("ClaveTecnica", todoTextoSalida, StringComparison.OrdinalIgnoreCase);
+        var resolucionesTexto = File.ReadAllText(Path.Combine(carpetaMuestrasRepo, "resoluciones.json"), Encoding.UTF8);
+        Assert.DoesNotContain("ClaveTecnica", resolucionesTexto, StringComparison.OrdinalIgnoreCase);
 
         var originalesSensibles = ExtraerValoresSensibles(origenLocal);
         Assert.NotEmpty(originalesSensibles);
@@ -399,6 +408,50 @@ public class AnonimizadorTests : IDisposable
         Assert.Equal(9, tercAnon.Count);
         Assert.All(fvsAnon, f => Assert.Null(f!["Resolucion"]));
         Assert.All(tercAnon, t => Assert.Matches(@"^\d{5}$", t!["CodMunicipio"]?.GetValue<string>() ?? ""));
+    }
+
+    [Fact]
+    public void Factura_qa_anonimizada_se_traduce_a_UBL_sin_errores_y_sin_credenciales()
+    {
+        var carpetaMuestrasRepo = ResolverCarpetaMuestrasRepo();
+        Assert.NotNull(carpetaMuestrasRepo);
+
+        var rutaFacturaQa = Path.Combine(carpetaMuestrasRepo!, "factura-qa-fv016.json");
+        Assert.True(File.Exists(rutaFacturaQa), $"Falta {rutaFacturaQa}");
+
+        var json = File.ReadAllText(rutaFacturaQa, Encoding.UTF8);
+        var doc = JObject.Parse(json).ToObject<DocumentoDian>()!;
+
+        Assert.Equal("01", doc.TipoDocDian);
+        Assert.Equal(AnonimizadorMuestras.MarcadorClaveTecnica, doc.Resolucion.ClaveTecnica);
+        Assert.Equal(NitHelper.CalcularDigitoVerificador(doc.Emisor.NIT).ToString(), doc.Emisor.DV);
+        Assert.Equal(NitHelper.CalcularDigitoVerificador(doc.Receptor.NIT).ToString(), doc.Receptor.DV);
+        Assert.Equal(3, doc.Items.Count);
+
+        var parametros = new ParametrosEmision
+        {
+            Ambiente = AmbienteDestino.PRUEBAS,
+            SoftwareNit = doc.Emisor.NIT,
+            SoftwareIdentificador = "00000000-0000-0000-0000-000000000000",
+            SoftwarePin = "12345"
+        };
+
+        var factura = TraductorFactura.Factura(doc, parametros);
+        var xml = XDocument.Parse(factura.SerializeXmlDocument().ToXmlString());
+
+        decimal ParseValor(XElement el) => decimal.Parse(el.Value, CultureInfo.InvariantCulture);
+
+        var lineasXml = xml.Root!.Elements(Datos.Cac + "InvoiceLine").ToList();
+        Assert.Equal(3, lineasXml.Count);
+
+        var sumaLineas = lineasXml.Sum(l => ParseValor(l.Element(Datos.Cbc + "LineExtensionAmount")!));
+        var total = xml.Root.Element(Datos.Cac + "LegalMonetaryTotal")!;
+        var impuestosXml = xml.Root.Elements(Datos.Cac + "TaxTotal").Sum(t => ParseValor(t.Element(Datos.Cbc + "TaxAmount")!));
+
+        Assert.Equal(39159.66m, sumaLineas);
+        Assert.Equal(39159.66m, ParseValor(total.Element(Datos.Cbc + "LineExtensionAmount")!));
+        Assert.Equal(7440.34m, impuestosXml);
+        Assert.Equal(46600.00m, ParseValor(total.Element(Datos.Cbc + "PayableAmount")!));
     }
 
     private static List<string> ExtraerValoresSensibles(string origen)

@@ -1,0 +1,149 @@
+{
+  "TipoDocDian": "01",
+  "TipoDocErp": "FV",
+  "Numero": "SETP990001001",
+  "FechaHoraDoc": "2026-11-02T10:00:00",
+  "FormaPago": {
+    "ID": "Contado",
+    "CodigoMedioPago": "10",
+    "IdenficadorPago": "",
+    "Plazo": 0
+  },
+  "OrdenRef": {
+    "Numero": "ORD-000001",
+    "Fecha": "2026-11-02T00:00:00",
+    "Descripcion": "Referencia de orden anonimizada"
+  },
+  "Resolucion": {
+    "NumeroResolucion": "18760001001",
+    "Prefijo": "SETP",
+    "Desde": 990000000,
+    "Hasta": 995000000,
+    "FechaExpedicion": "2019-01-19T00:00:00",
+    "FechaVencimiento": "2030-01-19T00:00:00",
+    "ClaveTecnica": "<CLAVE_TECNICA_DE_LA_RESOLUCION>"
+  },
+  "Emisor": {
+    "TipoPersona": "JURIDICA",
+    "TipoIdDian": "31",
+    "Codigo": "EMP01",
+    "MatriculaMercantil": "00001",
+    "NIT": "900593955",
+    "DV": "7",
+    "RazonSocial": "EMPRESA EJEMPLO 1 S.A.S.",
+    "NombreComercial": "SUCURSAL EJEMPLO 1",
+    "NombreContacto": "Contacto Ejemplo",
+    "EmailContacto": "sucursal-2fed69@ejemplo.example",
+    "TelefonoContacto": "3000008247",
+    "LocacionPrincipal": {
+      "Direccion": "CALLE 64 # 61-26",
+      "CodigoMunicipio": "66001"
+    },
+    "LocacionComercial": {
+      "Direccion": "CALLE 64 # 61-26",
+      "CodigoMunicipio": "66001"
+    },
+    "responsabilidades_fiscales": [
+      { "Codigo": "O-13", "CodigoFE": "O-13", "Descripcion": "Gran contribuyente" },
+      { "Codigo": "48", "CodigoFE": "", "Descripcion": "Responsable de IVA" }
+    ]
+  },
+  "Receptor": {
+    "TipoPersona": "JURIDICA",
+    "TipoIdDian": "31",
+    "Codigo": "CLI-0001",
+    "MatriculaMercantil": "00000",
+    "NIT": "1088236557",
+    "DV": "5",
+    "RazonSocial": "CLIENTE EJEMPLO 1 S.A.S.",
+    "NombreComercial": "CLIENTE EJEMPLO 1 S.A.S.",
+    "EmailContacto": "cliente-f931d2@ejemplo.example",
+    "TelefonoContacto": "6020002413",
+    "LocacionPrincipal": {
+      "Direccion": "AVENIDA 29 # 26-15",
+      "CodigoMunicipio": "66001"
+    },
+    "LocacionComercial": {
+      "Direccion": "AVENIDA 29 # 26-15",
+      "CodigoMunicipio": "66001"
+    },
+    "responsabilidades_fiscales": [
+      { "Codigo": "R-99-PN", "CodigoFE": "R-99-PN", "Descripcion": "No aplica - Otros" },
+      { "Codigo": "48", "CodigoFE": "", "Descripcion": "Responsable de IVA" }
+    ]
+  },
+  "Items": [
+    {
+      "ID": 1,
+      "Codigo": "SKU-0001",
+      "Referencia": "REF-0005",
+      "Detalle": "Producto de ejemplo SKU-0001",
+      "Cant": 1.0,
+      "ValorUnit": 16806.72,
+      "Excluido": false,
+      "TarifaIVA": 0.19,
+      "DtoDir": 0.0,
+      "impuestos": [
+        {
+          "ID": "01",
+          "Nombre": "IVA",
+          "Porcentaje": 0.19,
+          "ValorBase": 16806.72,
+          "ValorImp": 3193.28,
+          "Operacion": "SUMA",
+          "Calculo": "PORCENTUAL"
+        }
+      ],
+      "retenciones": []
+    },
+    {
+      "ID": 2,
+      "Codigo": "SKU-0002",
+      "Referencia": "REF-0242",
+      "Detalle": "Producto de ejemplo SKU-0002",
+      "Cant": 1.0,
+      "ValorUnit": 12605.04,
+      "Excluido": false,
+      "TarifaIVA": 0.19,
+      "DtoDir": 0.05,
+      "impuestos": [
+        {
+          "ID": "01",
+          "Nombre": "IVA",
+          "Porcentaje": 0.19,
+          "ValorBase": 11974.79,
+          "ValorImp": 2275.21,
+          "Operacion": "SUMA",
+          "Calculo": "PORCENTUAL"
+        }
+      ],
+      "retenciones": []
+    },
+    {
+      "ID": 3,
+      "Codigo": "SKU-0003",
+      "Referencia": "REF-0247",
+      "Detalle": "Producto de ejemplo SKU-0003",
+      "Cant": 1.0,
+      "ValorUnit": 10924.37,
+      "Excluido": false,
+      "TarifaIVA": 0.19,
+      "DtoDir": 0.05,
+      "impuestos": [
+        {
+          "ID": "01",
+          "Nombre": "IVA",
+          "Porcentaje": 0.19,
+          "ValorBase": 10378.15,
+          "ValorImp": 1971.85,
+          "Operacion": "SUMA",
+          "Calculo": "PORCENTUAL"
+        }
+      ],
+      "retenciones": []
+    }
+  ],
+  "Notas": [
+    "Documento de ejemplo anonimizado."
+  ]
+}
