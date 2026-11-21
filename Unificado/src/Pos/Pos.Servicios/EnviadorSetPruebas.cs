@@ -24,7 +24,8 @@ namespace DIAN.Pos.Servicios
             string numero,
             string carpetaCliente,
             string nombreArchivoSet,
-            TimeSpan esperaSet)
+            TimeSpan esperaSet,
+            string uuid = "")
         {
             var subida = enviador.EnviarSetPruebas(new List<byte[]> { firmado }, testSetId);
 
@@ -35,7 +36,7 @@ namespace DIAN.Pos.Servicios
                 .ToList() ?? new List<string>();
             if (string.IsNullOrEmpty(subida.ZipKey) || errores.Count > 0)
             {
-                var sinZip = ResultadoSet.Desde("99", string.Join(" | ", errores.DefaultIfEmpty("La DIAN no devolvió ZipKey.")), subida.ZipKey, numero);
+                var sinZip = ResultadoSet.Desde("99", string.Join(" | ", errores.DefaultIfEmpty("La DIAN no devolvió ZipKey.")), subida.ZipKey, numero, uuid);
                 Guardar(carpetaCliente, nombreArchivoSet, sinZip);
                 return sinZip;
             }
@@ -49,7 +50,7 @@ namespace DIAN.Pos.Servicios
                 mensaje = (mensaje ?? string.Empty) + " | " + string.Join(" | ", dian.ErrorMessage);
             }
 
-            var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, subida.ZipKey, numero);
+            var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, subida.ZipKey, numero, uuid);
             Guardar(carpetaCliente, nombreArchivoSet, resultado);
             return resultado;
         }

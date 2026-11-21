@@ -134,9 +134,9 @@ namespace DIAN.Pos.Servicios
                            ?? throw new InvalidOperationException("Los parámetros del módulo de DOCUMENTO_SOPORTE no están bien configurados");
             if (string.IsNullOrEmpty(software.TestSetId)) throw new InvalidOperationException("El software de documento soporte no tiene TestSetId (identificador del set de pruebas).");
 
-            var (_, firmado, _) = Construir(de, software);
+            var (nota, firmado, _) = Construir(de, software);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, de.Numero, _carpetaCliente, "set-ds.json", _esperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, de.Numero, _carpetaCliente, "set-ds.json", _esperaSet, nota.UUID.Value);
         }
 
         private (CreditNoteType Nota, byte[] Firmado, string Xml) Construir(MetaDatosDE de, SoftwareConfig software)

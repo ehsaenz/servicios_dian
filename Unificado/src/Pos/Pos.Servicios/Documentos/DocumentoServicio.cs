@@ -27,15 +27,16 @@ namespace DIAN.Pos.Servicios.Documentos
     /// Resultado de un envío al set de pruebas. Estado: "aceptado" (la DIAN confirma el set: código 2 y «se encuentra Aceptado»),
     /// "rechazado" (código 99) o "en_proceso" (cualquier otra cosa: la DIAN aún no decide).
     /// </summary>
-    public sealed record ResultadoSet(string Estado, string Mensaje, string ZipKey, string Numero, DateTime FechaUtc)
+    /// <summary>CodigoDian y Uuid son lo que el ERP necesita: el código de respuesta de la DIAN y el CUFE/CUDE/CUDS del documento.</summary>
+    public sealed record ResultadoSet(string Estado, string Mensaje, string ZipKey, string Numero, DateTime FechaUtc, string CodigoDian = "", string Uuid = "")
     {
-        public static ResultadoSet Desde(string? codigo, string? mensaje, string? zipKey, string numero)
+        public static ResultadoSet Desde(string? codigo, string? mensaje, string? zipKey, string numero, string uuid = "")
         {
             var texto = mensaje ?? string.Empty;
             var estado = codigo?.Trim() == "2" && texto.Contains("se encuentra Aceptado", StringComparison.OrdinalIgnoreCase) ? "aceptado"
                 : codigo?.Trim() == "99" ? "rechazado"
                 : "en_proceso";
-            return new ResultadoSet(estado, texto, zipKey ?? string.Empty, numero, DateTime.UtcNow);
+            return new ResultadoSet(estado, texto, zipKey ?? string.Empty, numero, DateTime.UtcNow, codigo?.Trim() ?? string.Empty, uuid ?? string.Empty);
         }
     }
 
@@ -133,9 +134,9 @@ namespace DIAN.Pos.Servicios.Documentos
             if (string.IsNullOrEmpty(software.TestSetId)) throw new DocumentoNoTraducibleException("El software de facturación no tiene TestSetId (identificador del set de pruebas).");
             if (doc == null || string.IsNullOrWhiteSpace(doc.Numero)) throw new DocumentoNoTraducibleException("El documento no trae número.");
 
-            var firmado = FirmarDocumento(doc, out _);
+            var firmado = FirmarDocumento(doc, out var cufe);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente, "set-facturacion.json", EsperaSet);
+            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente, "set-facturacion.json", EsperaSet, cufe);
         }
 
 

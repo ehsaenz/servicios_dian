@@ -277,4 +277,12 @@ public class EnvioSetModulosApiTests : IClassFixture<CarpetaClientes>, IDisposab
         Assert.Contains("ZipKey", r.Mensaje);
         Assert.Equal(0, _fabrica.Consultas);
     }
+
+    [Fact]
+    public void El_resultado_lleva_el_codigo_de_la_DIAN_y_el_uuid_del_documento()
+    {
+        var r = ResultadoSet.Desde("2", "Set de prueba con identificador 1 se encuentra Aceptado.", "zip9", "FV9", "abc-uuid");
+        Assert.Equal("2", r.CodigoDian);
+        Assert.Equal("abc-uuid", r.Uuid);
+    }
 }
