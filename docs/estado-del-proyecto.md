@@ -55,6 +55,16 @@ Cambios del 2026-11-20 (sin commitear, para revisión):
 - El servidor sigue con el binario anterior: la limpieza automática de logos aún no está publicada.
 - **No verificado:** que `~/factura-ok.json` (contiene la clave técnica del set) se haya borrado en `quanty-lab`.
 
+## Pendientes para decidir al despertar (2026-11-22)
+
+- **Prueba real contra la DIAN:** requiere aprobación de Eduardo (consume consecutivos y cuenta para el set).
+- **Resolución de documento soporte (DSNO, prefijo S3):** venció el 2026-09-13. Hay que renovarla o cargar una vigente antes de emitir documento soporte.
+- **Facturas de venta:** 27 facturas FV en la base de desarrollo, ninguna con CUFE y todas con `Resolucion` vacía. La resolución de pruebas (SETP, 990000000 a 995000000) está activa y el consecutivo va en 990000027.
+- **Clave técnica:** la tabla `resoluciones` de la base de desarrollo la guarda en texto plano. Revisar cómo se protege.
+- **Conexión a la base de QuantyERP:** se hizo solo con consultas de lectura, sin exportar datos. Falta autorizar la exportación anonimizada de productos y facturas.
+- **Brechas del ERP (QuantyERP.DianWorker):** login legado en lugar de `x-api-key`; respuesta 202 no reconocida; notas 91 y 92 sin referencia ni resolución en el JSON; tipos 02 y 03 no soportados por la API; impuesto `14` (INC) sin mapear. Antigravity revisa en la siguiente ronda si la API las acepta.
+- **Nota 95 en `EnviarDE`:** decisión pendiente.
+
 ## Pendientes
 
 Revisión nocturna (2026-11-21), sin cambios de código:
