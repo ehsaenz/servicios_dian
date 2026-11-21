@@ -50,7 +50,14 @@ if (args.Length == 0 || args[0] is "-h" or "--help" or "ayuda")
 
 var opciones = Opciones.Leer(args.Skip(1).ToArray());
 var baseUrl = (Environment.GetEnvironmentVariable("DIAN_API_URL") ?? "http://localhost:5290").TrimEnd('/');
-var clave = Environment.GetEnvironmentVariable("DIAN_API_KEY");
+var clave = Environment.GetEnvironmentVariable("DIAN_API_KEY")?.Trim();
+
+// La clave viaja en la cabecera: solo por HTTPS, salvo en una máquina local (autenticacion.md).
+if (!baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) && !new Uri(baseUrl).IsLoopback)
+{
+    Console.Error.WriteLine("DIAN_API_URL debe usar https:// salvo en localhost. No se envía la clave por HTTP.");
+    return 1;
+}
 
 using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
 
