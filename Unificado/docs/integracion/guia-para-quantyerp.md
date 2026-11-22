@@ -183,6 +183,33 @@ Detalle en [referencia-api.md](referencia-api.md).
 
 ---
 
+## 8.1 Receptores persona natural (requisito nuevo)
+
+Cuando el receptor es una **persona natural**, el ERP debe enviar el nombre **separado en cuatro campos**, además de la razón social:
+
+```json
+"Receptor": {
+  "TipoPersona": "NATURAL",
+  "TipoIdDian": "13",
+  "PrimerNombre": "HAROLD",
+  "SegundoNombre": "",
+  "PrimerApellido": "ARENA",
+  "SegundoApellido": ""
+}
+```
+
+- `TipoIdDian` es el código del documento: `13` cédula de ciudadanía, `11` registro civil, `12` tarjeta de identidad, `22` cédula de extranjería, `41` pasaporte.
+- Los cuatro campos del nombre pueden ir vacíos, pero **no deben faltar**: el XML los usa para `FirstName`, `MiddleName` y `FamilyName`.
+- En la base de MatrixSQL/QuantyERP el nombre de un tercero natural suele venir en **un solo campo** (`terceros.Nombre`, con apellido y nombre juntos). El ERP tiene que partirlo antes de enviar; la API no adivina.
+- Para persona natural, `DV` no aplica: envíe `"0"`.
+
+Verificado el 2026-11-21: antes de esta fecha, cualquier receptor persona natural hacía fallar la API con `NullReferenceException`. Está corregido desde el commit `97affe8`.
+
+## 8.2 Importes de las líneas
+
+- `Items[].BaseGeneral` **la calcula el ERP**, no la API: `(Cantidad × PrecioUnitario) + cargos − descuentos`. Si llega en 0, el documento se firma y se transmite con importe 0 y la línea marcada como gratuita, **sin aviso**.
+- Si su precio unitario incluye el IVA (en MatrixSQL, `itemssalidas_impuestos.IncluidoEnPrecio = 1`), **desglóselo antes de enviar**: la API espera el precio antes de impuestos.
+
 ## 9. Qué no debe hacer el ERP
 
 - No enviar la clave de API por HTTP ni en la URL.
