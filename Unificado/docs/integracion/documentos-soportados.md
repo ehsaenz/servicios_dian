@@ -246,3 +246,84 @@ Ver [referencia-api.md](referencia-api.md#eventos-radian) y [nómina](referencia
 - Tributos no porcentuales (consumo por unidad, impuesto a las bolsas): el servicio los acepta por su código, pero su cálculo no se probó con integradores externos.
 - Retenciones por línea en el JSON: el servicio las envía como impuestos de retención de la línea y en el resumen; su aceptación depende de las reglas vigentes de la DIAN.
 - La lista exacta de códigos de tributo, de medio de pago y de tipo de documento es la del anexo técnico de la DIAN vigente; el servicio solo valida los de tributo (código desconocido = 400).
+
+## Campos que el código exige y esta guía no decía
+
+Añadido el 2026-11-21 tras auditar el contrato bloque por bloque. Cada fila la verificó un revisor que intentó refutarla leyendo el código.
+Lo que sigue **no es opcional**: si el ERP no lo envía, la API responde 400 o el documento sale mal.
+
+### Tiquete POS electrónico (20)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `Items[].BaseGeneral` | Un ERP que envíe Cantidad y PrecioUnitario (lo natural) deja BaseGeneral en 0: no hay 400, el tiquete se firma y se transmite con LineExtensionAmount 0, PayableAmount 0 y cada línea... | Sí |
+| `Items[] (Descripcion / Cantidad / PrecioUnitario / Impuestos[].Tipo)` | El ERP que reutiliza la única forma documentada manda Detalle/Cant/ValorUnit: se ignoran en silencio (línea con Descripcion null, Cantidad 0, PrecioUnitario 0) y, como el impuesto llega... | Sí |
+| `Items[].Impuestos[].Porcentaje` | Si el ERP sigue la doc y manda 0.19, el XML sale con cbc:Percent 0.19 mientras el Importe corresponde al 19%: rechazo DIAN por inconsistencia tarifa/valor (no hay 400 previo). | Sí |
+| `Totales (Totales.TotalPagable)` | Omitir Totales (razonable, porque el servicio recalcula) produce NullReferenceException antes de firmar: 400 'Ocurrió un error inesperado el documento no se envió: Object reference not... | Sí |
+| `DetallePago (Forma, Metodo)` | Sin DetallePago (o sin DetallePago.Metodo) el envío falla con NullReferenceException: 400 'Ocurrió un error inesperado el documento no se envió: ...', sin decir qué campo falta. | Sí |
+| `Emisor.DatosComerciales, Emisor.DireccionFiscal` | Un ERP que arme el Emisor según la sección del 20 recibe 400 'Ocurrió un error inesperado el documento no se envió: Object reference not set...' en el primer envío. | Sí |
+| `Adquiriente.DireccionComercial, Adquiriente.TipoIdentificacion` | El caso típico del POS (consumidor final con solo identificación y nombre) produce NullReferenceException: 400 'Ocurrió un error inesperado el documento no se envió: ...'. | Sí |
+| `ResponseDian.statusCode (y StrQR)` | El ERP que evalúe statusCode=='00' da por fallido todo tiquete aceptado en habilitación ('2' no figura en la tabla). El propio servicio tiene el mismo sesgo:... | Sí |
+| `EnviarDEJson.JsonDE` | El ERP que siga la guía manda el JSON en claro, Convert.FromBase64String lanza y el servicio responde 400 'Ocurrió un error desserializando el ojeto', sin pista de que faltaba codificar... | Sí |
+| `Items[].Impuestos[].Tipo.Codigo` | Un código de tributo fuera del catálogo (Tipos.cs:420-444) no produce 400: se firma y se transmite, y la DIAN lo rechaza con una regla críptica. Además, como Tipo.Nombre también se copia... | No |
+| `ResponseDian.TrackID` | ConsultarDE con ese TrackID entra por la rama de lote (TransporteDocumentoEquivalente.cs:114) y llama ConsultarDocumentos (GetStatusZip) con un CUDE; al no venir resultado se lanza... | No |
+| `InformacionCaja (PlacaCaja, UbicacionCaja, NombreCajero, TipoCaja)` | El ERP no tiene cómo saber que debe enviarlos: el tiquete sale con <Value></Value> vacíos en PlacaCaja, Cajero y UbicaciónCaja de la extensión PuntoVenta (solo TipoCaja se rellena con... | No |
+
+### Nota de ajuste POS (94)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `Totales (ValorBruto, BaseImponible, ValorBrutoConImpuestos, TotalPagable)` | HTTP 400 "Totales es obligatorio." para todo ERP que arme la nota con lo que dice la doc. Si lo envía, hay un segundo 400 ("Los totales de la nota no coinciden..."): BaseImponible debe... | Sí |
+| `Items[].BaseGeneral` | HTTP 400 "BaseGeneral debe corresponder a cantidad por precio...". Un ERP que siga la doc del 94 ("al menos una línea, con descripción, unidad de medida, cantidad positiva e importes no... | Sí |
+| `Totales.Descuentos, Totales.Cargos, Totales.Anticipo` | HTTP 400 en cualquier nota de ajuste que venga de una venta POS con descuento global (caso muy común: descuento por total de la compra, no por línea). El ERP tiene que redistribuir el... | Sí |
+| `Emisor.RazonSocial vs Emisor.DatosComerciales.NombreComercial` | Un ERP que siga documentos-soportados.md:229 ("Emisor completo (identificación, razón social, ..., datos comerciales...)") y mande RazonSocial con un DatosComerciales sin NombreComercial... | Sí |
+| `Adquiriente.RazonSocial / Adquiriente.NombreComercial` | HTTP 400 "Faltan datos del adquiriente o su dirección comercial." aunque documentos-soportados.md:230 dice que basta "razón social o nombre comercial". Es el caso normal de un ERP que... | Sí |
+| `Adquiriente.NombreComercial` | Un adquiriente identificado solo con RazonSocial (permitido por documentos-soportados.md:230) pasa la validación y produce <cac:PartyName><cbc:Name/></cac:PartyName> vacío. La propia doc... | Sí |
+| `DetallePago.Forma (y cualquier enum o número citado) en EnviarDEJson` | El mismo cuerpo que funciona en EnviarDE devuelve HTTP 400 "Ocurrió un error desserializando el ojeto" en EnviarDEJson si trae "Forma": "CONTADO" (o "Contado"), si cita números... | Sí |
+| `JsonDE` | El ERP que siga la guía manda el JSON en claro, Convert.FromBase64String lanza FormatException y recibe HTTP 400 "Ocurrió un error desserializando el ojeto", un mensaje que apunta al... | Sí |
+| `Items[].Impuestos[] con Tipo 05, 06 o 07` | HTTP 400 para cualquier nota cuyo tiquete original llevara retención. La lista de validaciones del 94 (documentos-soportados.md:226-233) no menciona la restricción, mientras que el... | Sí |
+| `Código HTTP de EnviarDE con TipoDocumento 94` | referencia-api.md:259 y documentos-soportados.md:235 dicen que el 409 del 94 significa "ya existe una nota con ese número y otros datos, sin resolver". Un ERP que automatice ese 409... | No |
+
+### Documento soporte (05)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `Items[].PeriodoFacturacionLine` | documentos-soportados.md:204 solo nombra 'Items' y nunca menciona un periodo por línea. Un ERP que mande líneas con Cantidad/PrecioUnitario/Descripcion/Impuestos provoca... | Sí |
+| `Adquiriente.TipoIdentificacion` | documentos-soportados.md:206-210 enumera las 'Reglas verificadas en el servicio' del 05 y del adquiriente solo exige mismo NIT y misma razón social; referencia-api.md:229 repite lo... | Sí |
+| `DetallePago.Metodo` | documentos-soportados.md:204 solo nombra 'DetallePago' entre los campos principales del 05, sin detallar sus miembros; el único sitio donde la doc exige el método es la nota de ajuste 94... | Sí |
+| `ResponseDian.TrackID` | referencia-api.md:330 dice del campo TrackID: 'En habilitación, identificador del envío (ZipKey); en producción, el UUID. Úselo para consultar.', y referencia-api.md:324 declara esa... | Sí |
+| `track_id de POST /api/DocumentoSoporte/ConsultarDSNO` | referencia-api.md:238 instruye lo contrario: 'En habilitación es el ZipKey del envío; en producción, el UUID (CUDS) del documento'. En habilitación el ERP no tiene ningún ZipKey que... | Sí |
+| `JsonDE (cuerpo MetaDatosDE del 05 por EnviarDEJson)` | referencia-api.md:266 dice 'Igual que EnviarDE, pero el MetaDatosDE viaja en un parámetro JsonDE codificado en Base64' y guia-para-quantyerp.md:159 'EnviarDEJson recibe el mismo... | Sí |
+| `Periodo.FormaGT` | documentos-soportados.md:204 incluye 'Periodo' entre los campos del cuerpo del 05 y nada dice de que su forma de generación se descarte. Un ERP que agrupe compras de la semana y mande... | No |
+
+### Nota de ajuste de documento soporte (95)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `Proveedor.DireccionFisica (el ERP escribiría Proveedor.DireccionFiscal)` | Un ERP que mande `Proveedor: { "Identificacion": ..., "DireccionFiscal": {...} }` (el nombre que usan Emisor y Adquiriente) pierde la dirección en silencio, DireccionFisica queda null y... | Sí |
+| `Adquiriente.TipoIdentificacion` | El ERP que arma el adquiriente con lo documentado (Identificacion + RazonSocial) recibe HTTP 400 `Ocurrió un error inesperado el documento no se envió: Object reference not set to an... | Sí |
+| `DocumentoReferencia.AlgoritmoCufe.Codigo y DocumentoReferencia.UUID` | El ERP que copia el contrato del 94 (AlgoritmoCufe = CUDE-SHA384) o que omite AlgoritmoCufe —porque la doc nunca lo nombra para el 95— recibe HTTP 400 `La referencia requiere el CUDS del... | Sí |
+| `DocumentoReferencia.TipoDocumento.Codigo` | Enviar la referencia sin TipoDocumento, o con el tipo de la propia nota (95), da HTTP 400 `DocumentoReferencia debe identificar el documento soporte original (05).` Quien reutilice... | Sí |
+| `ConceptoAjuste.Codigo` | Un ERP que arme la nota con lo documentado (referencia al 05 + líneas) y sin ConceptoAjuste recibe HTTP 400 `ConceptoAjuste.Codigo debe estar entre 1 y 5 (concepto de la nota de ajuste... | Sí |
+| `Adquiriente.RazonSocial` | El mismo adquiriente que el servicio rechaza con 400 en un 05 pasa sin aviso en un 95, y la nota viaja a la DIAN con un RegistrationName distinto al del documento soporte que corrige.... | No |
+| `TipoDocumento.Codigo = "95" en POST /api/DocumentoSoporte/EnviarDSNO` | El equipo que integre leyendo los dos documentos de referencia no encuentra el contrato del 95: ni los campos obligatorios (ConceptoAjuste, DocumentoReferencia con tipo 05 y... | No |
+
+### Nómina electrónica (102 individual y 103 ajuste)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `DocumentoReferencia (Numero, Cune, FechaGeneracion)` | Es exactamente la familia del bug de DocumentoRef en facturación. El integrador que lee el mensaje de error agrega un objeto `Referencia` (o, viniendo de notas 91/92, un `DocumentoRef`),... | Sí |
+| `CuentaBanco` | Un ERP que paga en efectivo (MetodoPago distinto de "42") envía correctamente el 102 sin CuentaBanco y, al intentar el 103 que lo reemplaza o elimina, recibe HTTP 400 con statusCode "99"... | Sí |
+| `InformacionDevengados.* y OtrosIngresos en el 103` | set-de-pruebas-produccion.md:14 y guia-para-quantyerp.md:136 anuncian el bloque de nómina como "(102, 103)" con "el mismo cuerpo JSON habitual", pero el 103 que reemplaza a un 102 con... | Sí |
+| `Notas` | referencia-api.md:316 remite al integrador a MetaDatosNEI.cs como esquema, y documentos-soportados.md:43 documenta `Notas` como lista de texto en el otro bloque, así que el ERP lo... | No |
+| `HoraExtraLab.Pago / Deducciones (Salud, FondoPension)` | El ERP que ya liquidó su nómina (libranzas, retefuente, fondo de solidaridad, salud o pensión distintas del 4%, jornada mensual distinta de 240 horas pese a existir... | No |
+
+### Eventos RADIAN (030 a 033)
+
+| Campo | Qué pasa si falta o va distinto | Bloquea |
+|---|---|---|
+| `Codigo = "034" / POST /api/v1/Eventos/AceptacionTacita` | El ERP que implemente la aceptación tácita según la documentación recibe siempre HTTP 400 con statusCode 109. Además 109 no figura en la tabla de códigos 400 de referencia-api.md:302... | Sí |
+| `ResponseDian.UUID (y Uuid de set-radian.json) en 030-033` | El ERP que guarde response.UUID como CUDE del evento (lo que dice la documentación) guarda el CUFE de la factura, y además lo guarda repetido para el acuse, el recibo y la aceptación de... | No |
+| `ResponseDian.TrackID en 030-033` | El ERP que reserve una columna TrackID para los eventos (y que programe una consulta posterior como en POS o nómina) recibe siempre cadena vacía; para eventos RADIAN tampoco existe una... | No |
+
+El detalle completo, con archivo y línea de cada caso, está en [hallazgos-auditoria-contrato.md](hallazgos-auditoria-contrato.md).
