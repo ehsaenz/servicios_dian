@@ -47,6 +47,7 @@ Antes de pedir el paso a producción, recorra la [lista de verificación](lista-
 | [ambientes.md](ambientes.md) | Habilitación y producción, tiempos de espera, set de pruebas |
 | [set-de-pruebas-produccion.md](set-de-pruebas-produccion.md) | Paso del ERP para validar el set antes de producción (encabezado `X-Envio-Set`) |
 | [lista-de-verificacion.md](lista-de-verificacion.md) | Checklist de certificación del integrador |
+| [primer-envio-set.md](primer-envio-set.md) | Primer envío aceptado al set de pruebas de MARLIT (habilitación): CUFE, ZipKey e interpretación de `CodigoDian` |
 | [ejemplos/](ejemplos/README.md) | JSON completos y código en curl, C#, Node y Python |
 
 ## Qué rutas existen (resumen)

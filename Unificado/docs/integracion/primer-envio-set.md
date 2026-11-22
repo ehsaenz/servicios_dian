@@ -13,7 +13,7 @@ Fecha: 2026-11-22. Cliente: MARLIT GROUP S.A.S., NIT 901033307. Ambiente: habili
 
 - `CodigoDian` `2` = set aceptado, según la sección 8 de [guia-para-quantyerp.md](guia-para-quantyerp.md).
 - El mensaje "Set de prueba con identificador ..." repite el mismo valor en las dos respuestas. Es el `TestSetId` del software de MARLIT, fijo por cliente, no un identificador por documento. Cada factura tiene su propio CUFE y ZipKey.
-- No hay consulta de estado por número ni por UUID: `GET /api/documento/estado/{id}` responde 404. La confirmación depende de la respuesta del envío.
+- `GET /api/documento/estado/{id}` respondió 404 para ambos documentos, por número y por UUID. Lo más probable es que el envío al set no se guarde en la tabla de documentos, pero no está verificado. Por ahora la confirmación depende de la respuesta del envío.
 
 ## Cómo se envió
 
