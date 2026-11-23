@@ -272,7 +272,7 @@ public class SegundoFactorWebTests : IDisposable
         await Ingresar(cliente);
         var codigo = _canal.Codigo;
 
-        await cliente.GetAsync("/Login");
+        await cliente.GetAsync("/Login?reiniciar=true");
 
         // El intento de antes ya no existe: la pagina del segundo factor devuelve al ingreso
         // en vez de aceptar el codigo que se envio.
@@ -280,6 +280,22 @@ public class SegundoFactorWebTests : IDisposable
         Assert.Equal(HttpStatusCode.Redirect, respuesta.StatusCode);
         Assert.Equal("/Login", respuesta.Headers.Location!.OriginalString);
         Assert.NotEmpty(codigo);
+    }
+
+    [Fact]
+    public async Task Pedir_el_favicon_no_anula_el_codigo_pendiente()
+    {
+        // Paso en vivo el 2026-11-23: el navegador pide /favicon.ico nada mas llegar a la pagina del codigo,
+        // la autorizacion lo manda a /Login y esa visita anulaba el intento. El codigo nunca servia.
+        var cliente = Cliente(publica: true);
+        await Ingresar(cliente);
+
+        await cliente.GetAsync("/favicon.ico");
+        await cliente.GetAsync("/Login");
+
+        var respuesta = await Enviar(cliente, "/Codigo", new() { ["codigo"] = _canal.Codigo });
+        Assert.Equal(HttpStatusCode.Redirect, respuesta.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await cliente.GetAsync("/")).StatusCode);
     }
 
     [Fact]

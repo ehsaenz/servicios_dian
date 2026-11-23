@@ -198,6 +198,10 @@ app.Use(async (contexto, siguiente) =>
 
 app.UseAuthorization();
 
+// El panel no tiene icono. Sin esta ruta, el navegador pide /favicon.ico, la politica de autorizacion lo manda
+// al login y esa visita tenia efectos: anulaba el codigo del segundo factor que el usuario iba a escribir.
+app.MapGet("/favicon.ico", () => Results.NoContent()).AllowAnonymous();
+
 app.MapGet("/logo/{id}", async (string id, ITenantStore almacenClientes, System.Security.Claims.ClaimsPrincipal quien) =>
 {
     if (!quien.PuedeVer(id))

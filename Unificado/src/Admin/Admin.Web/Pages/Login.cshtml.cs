@@ -29,13 +29,17 @@ namespace DIAN.Admin.Web.Pages
         public string? Error { get; private set; }
 
         /// <summary>
-        /// Volver al ingreso anula el codigo pendiente: no debe quedar uno vivo mientras se pide otro, ni seguir
-        /// sirviendo si quien volvio no era el dueño de la sesion.
+        /// Volver al ingreso **a proposito** anula el codigo pendiente: no debe quedar uno vivo mientras se pide otro.
         /// </summary>
-        public void OnGet()
+        /// <param name="reiniciar">
+        /// Lo pone el enlace «Vuelva al ingreso» de la pagina del codigo. Sin el no se toca nada: al navegador le
+        /// basta con pedir un archivo que no existe (favicon.ico) para acabar aqui con una redireccion, y eso anulaba
+        /// el codigo que el usuario estaba a punto de escribir.
+        /// </param>
+        public void OnGet(bool reiniciar = false)
         {
             var ticket = Request.Cookies[Ingreso.CookieTicket];
-            if (!string.IsNullOrEmpty(ticket))
+            if (reiniciar && !string.IsNullOrEmpty(ticket))
             {
                 _segundoFactor.Cancelar(ticket);
                 Ingreso.BorrarTicket(HttpContext);
