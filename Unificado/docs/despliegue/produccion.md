@@ -10,7 +10,7 @@ Hoy todo corre en `quanty-lab`, una VM **de pruebas**, y **ningún cliente tiene
 |---|---|---|
 | 1 | **Definir el servidor definitivo.** `quanty-lab` aloja también QuantyERP y es de pruebas. | Pendiente |
 | 2 | **URL sin puerto** `https://dian.sistemas360.com` (sección 2). | Pendiente (requiere router y DNS) |
-| 3 | **Verificación en dos pasos** del portal. Hoy: usuario y contraseña generada, que el cliente cambia en «Mi cuenta». | Pendiente |
+| 3 | **Verificación en dos pasos.** Hecha para el **operador** por la entrada pública (código de WhatsApp; ver [acceso-al-panel.md](../mantenimiento/acceso-al-panel.md)). Falta para los **usuarios de cliente** del portal, que siguen con usuario y contraseña generada. | Parcial |
 | 4 | **Correo de bienvenida y recuperación** de contraseña. Depende del contrato del EmailAPI (solo se conoce `IMiddleEmail.EnviarMail`/`GetTracking`). | Pendiente |
 | 5 | **Respaldo configurado** (`dian-respaldo configurar`) y **copia fuera del servidor**, con la llave privada guardada aparte. | Pendiente |
 | 6 | **Licencia de DevExpress para servidor.** El PDF usa DevExpress 24.1 y se decidió mantenerlo en el servidor sin consultar al proveedor. Los PDF funcionaron en el despliegue realizado. Si fallan, se revisa la licencia. **Riesgo aceptado por el responsable:** la licencia no está confirmada para este uso. | Decidido (riesgo aceptado) |

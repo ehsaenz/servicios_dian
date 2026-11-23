@@ -53,6 +53,7 @@ public class AdminUsuariosTests : IDisposable
     }
 }
 
+[Collection("admin-web")]
 public class AdminWebTests : IDisposable
 {
     private const string Usuario = "tester";

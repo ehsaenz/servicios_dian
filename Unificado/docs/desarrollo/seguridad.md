@@ -19,7 +19,7 @@ Modelo de amenazas y controles de la API (`Pos.Api`) y del portal (`Admin.Web`).
 |---|---|
 | ERP del cliente | `api/*` con la clave de **su** cliente. |
 | Usuario de cliente | Portal: solo su cliente (logo, sucursales, claves de API, webhook, documentos y PDF, su contraseña). |
-| Operador | Portal: todos los clientes, certificados, software, producción, usuarios, auditoría. Solo desde la red interna o la VPN. |
+| Operador | Portal: todos los clientes, certificados, software, producción, usuarios, auditoría. Desde la red interna o la VPN; por la dirección pública, solo con el código de WhatsApp. |
 | Internet | Solo `/salud`, `/api/*` (con clave válida) y el portal de clientes. |
 
 ## 2. Controles de la API
@@ -48,6 +48,7 @@ Modelo de amenazas y controles de la API (`Pos.Api`) y del portal (`Admin.Web`).
 | Bloqueo | 5 intentos fallidos bloquean al usuario **15 minutos**; queda en el registro. |
 | Roles | **Operador** y **Cliente** (`Roles.cs`). Un usuario de cliente solo ve y opera **su** cliente: cualquier otro responde **404** (no revela ids). Las acciones reservadas al operador se rechazan en el **servidor** (`OnPageHandlerExecuting`, lista blanca `AccionesDeCliente`) aunque se arme la petición a mano. |
 | Entrada pública vs. interna | nginx fija siempre la cabecera `X-Dian-Entrada` (`publica` o `interna`) y descarta la que mande el cliente; la app solo escucha en `127.0.0.1`, así que solo nginx puede ponerla. Con `Portal:OperadorSoloInterno` (verdadero por defecto) **un operador no puede iniciar sesión por la entrada pública** (recibe el mismo mensaje que una contraseña mala) y una cookie de operador usada ahí recibe **403**. Probado en vivo el 2026-11-09 (`linux/despliegue/pruebas/probar-entrada-publica.sh`). |
+| Segundo factor del operador | Por la entrada pública, un operador comprueba un **código de seis dígitos enviado por WhatsApp** al celular registrado en su usuario (`SegundoFactor`, `CanalWhatsApp`). El código vive **en memoria** (no en disco), caduca a los 5 minutos, admite 3 intentos, se consume al acertar y un intento nuevo anula el anterior. Mientras no se acierta **no hay cookie de sesión**: el intento solo se identifica con un ticket aleatorio de 32 bytes en una cookie `HttpOnly`/`Strict`. La sesión que pasó el código lleva el claim `segundo-factor`, y es la **única** cookie de operador que el middleware deja circular por la entrada pública. Sin celular registrado, sin clave del gateway (`Whatsapp:ClaveApi`) o si el gateway no acepta el mensaje, no se entra: queda la red interna. |
 | Antifalsificación | Todos los formularios llevan token; cookie antifalsificación `HttpOnly`, `SameSite=Strict`. |
 | Cabeceras | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, `Content-Security-Policy` restrictiva, HSTS en HTTPS. Todo contenido se escapa al mostrarlo. |
 | Cargas | Logo: PNG o JPG, hasta 1 MB, **firma de imagen verificada** (no solo la extensión). Certificado: se valida antes de guardar (que abra, que tenga llave privada y que no esté vencido; avisa si el NIT no aparece en el sujeto o si vence en menos de 30 días). Límite de cuerpo multipart de 2 MB. |

@@ -94,7 +94,7 @@ rm -f "$CONF.anterior"
 echo "== Comando de administración =="
 cat > /usr/local/sbin/dian-admin <<'SH'
 #!/usr/bin/env bash
-# Ejecuta la app Admin en modo comando (crear-admin, importar-cliente, crear-esquema, migrar-almacen) como el usuario del servicio.
+# Ejecuta la app Admin en modo comando (crear-admin, telefono-admin, importar-cliente, crear-esquema, migrar-almacen) como el usuario del servicio.
 # Uso: sudo dian-admin <comando> [argumentos]
 set -euo pipefail
 # Se lee línea a línea y SIN interpretación del shell: la cadena de MySQL lleva ";" y "source" la cortaría.
@@ -113,6 +113,7 @@ printf 'API  https://127.0.0.1/salud       -> HTTP %s\n' "$(curl -sk -o /dev/nul
 printf 'Admin https://127.0.0.1:8443/Login -> HTTP %s\n' "$(curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8443/Login)"
 echo "Listo. Siguientes pasos:"
 echo "  sudo dian-admin crear-admin <usuario>          primer administrador"
+echo "  sudo dian-admin telefono-admin <usuario> <celular>   celular del segundo factor"
 echo "  sudo dian-tls estado                           revisar el certificado (hoy autofirmado)"
 echo "  sudo dian-respaldo configurar                  activar los respaldos cifrados diarios"
 echo "  sudo dian-firewall aplicar --api <origen> --admin <origen>   abrir 443 y 8443 solo a quien corresponde"

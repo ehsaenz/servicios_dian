@@ -73,7 +73,10 @@ Las aplicaciones leen configuración de argumentos (`--Clave:Sub=valor`), variab
 | `Documentos:EnvioEnSegundoPlano` | API | `true` por defecto; las pruebas lo ponen en `false`. |
 | `Documentos:ReintentoSegundos` | API | Periodo del trabajo de reintentos (60; 0 lo apaga). |
 | `Dian:EsperaSetSegundos` | API | Espera al consultar el set de pruebas (5 por defecto). |
-| `Portal:OperadorSoloInterno` | Admin | `true` por defecto: un operador no puede entrar por la entrada pública. |
+| `Portal:OperadorSoloInterno` | Admin | `true` por defecto: un operador sin segundo factor no puede entrar por la entrada pública. |
+| `Portal:SegundoFactorOperador` | Admin | `true` por defecto: por la entrada pública el operador comprueba un código de WhatsApp. |
+| `Whatsapp:ClaveApi` (`Whatsapp__ClaveApi`) | Admin | Clave del gateway de WhatsApp. **Sin ella no hay segundo factor**; solo en el entorno del servidor. |
+| `Whatsapp:Url`, `Whatsapp:Sesion`, `Whatsapp:SegundosEspera` | Admin | Gateway y sesión (`https://services.sistemas360.com:47112`, `QuantyERPWhatsapp`, 20 s). |
 | `ADMIN_CLAVE` (variable) | Admin, comando `crear-admin` | Contraseña del primer administrador, para no pedirla por consola. |
 
 Si las dos aplicaciones no apuntan a **las mismas** carpetas de almacén y llaves (o a la misma base MySQL), no se ven entre sí.
@@ -96,6 +99,7 @@ Use carpetas de `config-local` (ignoradas por git). Comandos de consola de `Admi
 | Comando | Qué hace |
 |---|---|
 | `crear-admin <usuario>` | Crea un operador. |
+| `telefono-admin <usuario> [celular]` | Fija el celular del segundo factor del operador; sin celular, lo quita. |
 | `crear-esquema` | Crea las tablas `dian_*` en MySQL (requiere `MySql:Cadena`). Repetible. |
 | `migrar-almacen` | Copia los clientes del almacén de archivos a MySQL (sin sobrescribir). |
 | `importar-cliente <id> <config.json> [--clave-cert-env=VARIABLE] [--generar-clave=true]` | Alta de un cliente desde un JSON en el formato de la API anterior, con su certificado. La clave del certificado va por **variable de entorno**; con `--generar-clave=true` la última línea de la salida es la clave de API (se muestra una sola vez). Las opciones propias usan la forma `--opcion=valor`. |

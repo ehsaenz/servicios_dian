@@ -41,6 +41,26 @@ if (args.Length >= 2 && args[0] == "crear-admin")
     return;
 }
 
+// Celular del segundo factor de un operador (WhatsApp). Sin argumento de teléfono, lo quita:
+//   dotnet Admin.Web.dll telefono-admin <usuario> [<celular>]
+if (args.Length >= 2 && args[0] == "telefono-admin")
+{
+    var telefono = args.Length >= 3 ? args[2] : null;
+    if (!usuarios.FijarTelefono(args[1], telefono))
+    {
+        Console.Error.WriteLine("No existe el usuario " + args[1] + ".");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    var guardado = usuarios.TelefonoDe(args[1]);
+    new Auditoria(almacen).Registrar("consola", "admin-telefono", "", guardado == null ? "sin celular" : AdminUsuarios.Enmascarar(guardado));
+    Console.WriteLine(guardado == null
+        ? "Se quitó el celular de " + args[1] + "."
+        : "Celular de " + args[1] + ": " + AdminUsuarios.Enmascarar(guardado) + ".");
+    return;
+}
+
 // Esquema y migración al almacén de MySQL (requieren MySql:Cadena, por ejemplo en la variable MySql__Cadena):
 //   dotnet Admin.Web.dll crear-esquema            crea las tablas si no existen
 //   dotnet Admin.Web.dll migrar-almacen           copia los clientes del almacén de archivos (Almacen:Carpeta) a MySQL
@@ -99,6 +119,12 @@ builder.Services.AddSingleton<ISecretProtector>(_ => new ProtectorSecretos(llave
 builder.Services.AddSingleton(_ => new Auditoria(almacen));
 builder.Services.AddSingleton<ClienteAdminServicio>();
 
+// Segundo factor del operador por WhatsApp (gateway de SISTEMAS 360).
+builder.Services.AddHttpClient("whatsapp");
+builder.Services.AddSingleton(OpcionesWhatsApp.Desde(builder.Configuration));
+builder.Services.AddSingleton<ICanalWhatsApp, CanalWhatsApp>();
+builder.Services.AddSingleton<SegundoFactor>();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {
@@ -120,7 +146,10 @@ builder.Services.AddAntiforgery(o =>
     o.Cookie.HttpOnly = true;
 });
 
-builder.Services.AddRazorPages(o => o.Conventions.AllowAnonymousToPage("/Login"));
+builder.Services.AddRazorPages(o => {
+    o.Conventions.AllowAnonymousToPage("/Login");
+    o.Conventions.AllowAnonymousToPage("/Codigo");
+});
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = 2 * 1024 * 1024);
 
 // Detrás de un proxy inverso (nginx) con HTTPS: solo se confía en las cabeceras X-Forwarded-* que llegan del propio equipo.
@@ -152,11 +181,12 @@ app.Use(async (contexto, siguiente) =>
 
 app.UseAuthentication();
 
-// Una sesión de operador (por ejemplo, una cookie compartida con el puerto interno) no sirve en la entrada pública.
+// Una sesión de operador (por ejemplo, una cookie compartida con el puerto interno) no sirve en la entrada pública,
+// salvo que se haya abierto comprobando el código de WhatsApp.
 var operadorSoloInterno = app.Configuration.GetValue("Portal:OperadorSoloInterno", true);
 app.Use(async (contexto, siguiente) =>
 {
-    if (operadorSoloInterno && Roles.EntradaPublica(contexto.Request) && contexto.User.EsOperador())
+    if (operadorSoloInterno && Roles.EntradaPublica(contexto.Request) && contexto.User.EsOperador() && !contexto.User.ConSegundoFactor())
     {
         contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
         await contexto.Response.WriteAsync("El panel del operador solo está disponible desde la red interna.");

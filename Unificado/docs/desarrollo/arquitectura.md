@@ -118,7 +118,7 @@ Las rutas se conservaron de las APIs anteriores (decisión 5.5 del plan). Detall
 
 ## 7. Admin.Web
 
-Razor Pages con autenticación por cookie. Dos roles (`Roles.cs`): **Operador** (todos los clientes) y **Cliente** (solo el suyo). Páginas: `Login`, `Logout`, `Index` (lista de clientes), `Cliente` (detalle y todas las acciones), `Cuenta` (cambiar contraseña), `Auditoria`. Rutas mínimas en `Program.cs`: `/logo/{id}`, `/logo/{id}/{matricula}`, `/pdf/{id}/{numero}`. También ofrece comandos de consola (`crear-admin`, `crear-esquema`, `migrar-almacen`, `importar-cliente`; ver [entorno-y-compilacion.md](entorno-y-compilacion.md)). Seguridad en [seguridad.md](seguridad.md).
+Razor Pages con autenticación por cookie. Dos roles (`Roles.cs`): **Operador** (todos los clientes) y **Cliente** (solo el suyo). Páginas: `Login`, `Codigo` (segundo factor del operador por WhatsApp), `Logout`, `Index` (lista de clientes), `Cliente` (detalle y todas las acciones), `Cuenta` (cambiar contraseña), `Auditoria`. Rutas mínimas en `Program.cs`: `/logo/{id}`, `/logo/{id}/{matricula}`, `/pdf/{id}/{numero}`. También ofrece comandos de consola (`crear-admin`, `telefono-admin`, `crear-esquema`, `migrar-almacen`, `importar-cliente`; ver [entorno-y-compilacion.md](entorno-y-compilacion.md)). Seguridad en [seguridad.md](seguridad.md).
 
 ## 8. Hora, tiempo y plataformas
 

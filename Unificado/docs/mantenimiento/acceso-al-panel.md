@@ -31,6 +31,24 @@ Notas:
 - Si el usuario ya existe, el comando lo reemplaza (útil para restablecer la contraseña de un operador).
 - El primer operador de un servidor nuevo se crea con este mismo comando.
 
+## 1b. Registrar su celular para el segundo factor
+
+Solo hace falta si va a entrar por la **dirección pública** (`https://services.sistemas360.com:47125`). Por el túnel
+no se pide código.
+
+```bash
+ssh -t quanty-lab 'sudo dian-admin telefono-admin miusuario 3001234567'
+```
+
+El comando responde con los últimos cuatro dígitos (`Celular de miusuario: ···4567.`); el número entero no se
+vuelve a mostrar. Para quitarlo, el mismo comando sin el celular.
+
+Desde ese momento, al entrar por la dirección pública el panel pide un **código de seis dígitos** que llega por
+WhatsApp. Vence en cinco minutos y admite tres intentos; si se agotan, hay que volver a escribir usuario y
+contraseña para recibir uno nuevo. Pedir un código nuevo anula el anterior.
+
+Si el WhatsApp no llega, el panel lo dice y **no** deja entrar: use el túnel, que no depende del gateway.
+
 ## 2. Abrir el túnel
 
 El panel escucha dentro de la VM. El túnel conecta el puerto 8443 de **su PC** con el de la VM. En una terminal, ejecute y **déjela abierta**:

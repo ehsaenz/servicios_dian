@@ -10,6 +10,12 @@ namespace DIAN.Admin.Web
         public const string ClaimCliente = "cliente";
 
         /// <summary>
+        /// Marca que la sesión se abrió comprobando el código de WhatsApp. Un operador solo circula por la entrada
+        /// pública con esta marca.
+        /// </summary>
+        public const string ClaimSegundoFactor = "segundo-factor";
+
+        /// <summary>
         /// Cabecera que fija nginx según por dónde entró la petición: <c>publica</c> (internet, portal de clientes) o
         /// <c>interna</c> (red interna/VPN). La app solo escucha en 127.0.0.1, así que solo nginx puede ponerla.
         /// </summary>
@@ -19,6 +25,9 @@ namespace DIAN.Admin.Web
             string.Equals(peticion.Headers[CabeceraEntrada].ToString(), "publica", System.StringComparison.OrdinalIgnoreCase);
 
         public static bool EsOperador(this ClaimsPrincipal usuario) => usuario.IsInRole(Operador);
+
+        /// <summary>True si esta sesión pasó por el segundo factor.</summary>
+        public static bool ConSegundoFactor(this ClaimsPrincipal usuario) => usuario.FindFirst(ClaimSegundoFactor) != null;
 
         /// <summary>Id del cliente de un usuario de portal; null para el operador.</summary>
         public static string? ClienteId(this ClaimsPrincipal usuario) => usuario.FindFirst(ClaimCliente)?.Value;

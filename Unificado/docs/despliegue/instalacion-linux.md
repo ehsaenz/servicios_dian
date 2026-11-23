@@ -82,6 +82,9 @@ Archivo de root (600). Lo lee systemd para los dos servicios y el comando `dian-
 | `Cache__Carpeta` | Caché de archivos (`/var/lib/dian/cache`) | API y Admin |
 | `MySql__Cadena` | Opcional: cadena de MySQL para usar la base en vez del almacén de archivos (viene comentada) | API y Admin |
 | `Portal__OperadorSoloInterno` | Opcional: `false` desactiva el bloqueo de operadores en la entrada pública (no se recomienda) | Admin |
+| `Whatsapp__ClaveApi` | Clave del gateway de WhatsApp. **Sin ella no hay segundo factor** y el operador solo entra por la red interna | Admin |
+| `Whatsapp__Url`, `Whatsapp__Sesion` | Opcionales: gateway y sesión (`https://services.sistemas360.com:47112`, `QuantyERPWhatsapp`) | Admin |
+| `Portal__SegundoFactorOperador` | Opcional: `false` apaga el código de WhatsApp (vuelve a regir solo `Portal__OperadorSoloInterno`) | Admin |
 | `Dian__EsperaSetSegundos` | Opcional: espera del resultado del set de pruebas | API |
 | `Documentos__EnvioEnSegundoPlano` | Opcional: envío en segundo plano | API |
 | `Documentos__ReintentoSegundos` | Opcional: intervalo de reintentos | API |
@@ -113,7 +116,7 @@ sudo dian-respaldo configurar # una sola vez (ver respaldos-y-operacion.md)
 sudo dian-firewall aplicar --api 172.31.50.1 --admin 172.31.50.1 --iis 172.31.50.1   # ver nginx-y-firewall.md
 ```
 
-`dian-admin` ejecuta la app Admin en modo comando como el usuario `dian`, con las variables de `dian.env`, leídas línea a línea sin interpretación del shell (la cadena de MySQL lleva `;`). Comandos: `crear-admin`, `importar-cliente`, `crear-esquema`, `migrar-almacen`.
+`dian-admin` ejecuta la app Admin en modo comando como el usuario `dian`, con las variables de `dian.env`, leídas línea a línea sin interpretación del shell (la cadena de MySQL lleva `;`). Comandos: `crear-admin`, `telefono-admin`, `importar-cliente`, `crear-esquema`, `migrar-almacen`.
 
 ## Verificación rápida tras instalar
 

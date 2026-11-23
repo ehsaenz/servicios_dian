@@ -29,6 +29,9 @@ namespace DIAN.Admin.Web
 
             /// <summary>Id del cliente al que pertenece el usuario; vacío = operador de la plataforma.</summary>
             public string? ClienteId { get; set; }
+
+            /// <summary>Celular para el segundo factor por WhatsApp, con indicativo de país. Solo lo usan los operadores.</summary>
+            public string? Telefono { get; set; }
             public int Fallos { get; set; }
             public DateTime? BloqueadoHastaUtc { get; set; }
         }
@@ -85,6 +88,62 @@ namespace DIAN.Admin.Web
                 return Leer().FirstOrDefault(r => string.Equals(r.Usuario, usuario, StringComparison.OrdinalIgnoreCase))?.ClienteId;
             }
         }
+
+        /// <summary>Celular del segundo factor, o null si el usuario no tiene uno (o no existe).</summary>
+        public string? TelefonoDe(string usuario)
+        {
+            lock (_candado)
+            {
+                var telefono = Leer().FirstOrDefault(r => string.Equals(r.Usuario, usuario, StringComparison.OrdinalIgnoreCase))?.Telefono;
+                return string.IsNullOrWhiteSpace(telefono) ? null : telefono;
+            }
+        }
+
+        /// <summary>
+        /// Fija (o quita, con <paramref name="telefono"/> vacío) el celular del segundo factor. Devuelve false si el usuario
+        /// no existe. El número se guarda normalizado: solo dígitos, con indicativo 57 cuando vienen diez.
+        /// </summary>
+        public bool FijarTelefono(string usuario, string? telefono)
+        {
+            var normalizado = NormalizarTelefono(telefono);
+            if (telefono != null && !string.IsNullOrWhiteSpace(telefono) && normalizado == null)
+            {
+                throw new ArgumentException("El teléfono debe tener entre 10 y 15 dígitos.");
+            }
+
+            lock (_candado)
+            {
+                var lista = Leer();
+                var registro = lista.FirstOrDefault(r => string.Equals(r.Usuario, usuario, StringComparison.OrdinalIgnoreCase));
+                if (registro == null)
+                {
+                    return false;
+                }
+
+                registro.Telefono = normalizado;
+                Escribir(lista);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Deja solo los dígitos y antepone el 57 cuando son exactamente diez (celular colombiano). Devuelve null si el
+        /// resultado no parece un número. Misma regla que el resto de los envíos por WhatsApp del grupo.
+        /// </summary>
+        public static string? NormalizarTelefono(string? telefono)
+        {
+            var digitos = new string((telefono ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (digitos.Length == 10)
+            {
+                digitos = "57" + digitos;
+            }
+
+            return digitos.Length is >= 10 and <= 15 ? digitos : null;
+        }
+
+        /// <summary>Últimos cuatro dígitos, para decir a dónde se envió el código sin mostrar el número entero.</summary>
+        public static string Enmascarar(string telefono) =>
+            telefono.Length <= 4 ? telefono : "···" + telefono.Substring(telefono.Length - 4);
 
         /// <summary>Nombres de los usuarios del portal de un cliente.</summary>
         public IReadOnlyList<string> DeCliente(string clienteId)
