@@ -30,13 +30,31 @@
         .clave { display: block; padding: 10px; background: var(--fondo); border: 1px dashed var(--aviso); border-radius: 6px; margin: 8px 0; }
         img.logo { max-height: 70px; max-width: 220px; display: block; margin-bottom: 8px; }
         .etq { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--linea); }
-        @@media (max-width: 600px) { main { padding: 10px; } }
+        /* Un codigo de seis digitos se lee y se teclea mejor separado y en monoespaciada. */
+        input.codigo { font-family: ui-monospace, Consolas, monospace; font-size: 26px; letter-spacing: .4em; text-align: center; padding: 10px 8px 10px 18px; max-width: 240px; }
+        /* NIT y digito de verificacion no necesitan el mismo ancho que la razon social. */
+        .fila-nit { display: grid; grid-template-columns: minmax(170px, 2fr) minmax(140px, 1.6fr) 150px; gap: 0 14px; }
+        .enlace-suave { color: var(--suave); font-size: 13px; }
+        @@media (max-width: 600px) {
+            main { padding: 10px; }
+            .fila-nit { grid-template-columns: 1fr; }
+            /* La auditoria no cabe como tabla en un telefono: cada fila pasa a ser una ficha. */
+            table.registro thead { display: none; }
+            table.registro, table.registro tbody, table.registro tr, table.registro td { display: block; width: 100%; }
+            table.registro tr { border-bottom: 1px solid var(--linea); padding: 8px 0; }
+            table.registro td { border: 0; padding: 1px 0; }
+            table.registro td::before { content: attr(data-rotulo) ": "; color: var(--suave); font-size: 12px; }
+            table.registro td:empty { display: none; }
+        }
+        @@media (min-width: 601px) { table.registro td.nowrap { white-space: nowrap; } }
     </style>
 </head>
 <body>
     <header>
         <a asp-page="/Index">DIAN · Administración de clientes</a>
-        @if (User.Identity?.IsAuthenticated == true)
+        @* En el ingreso y en el segundo factor no se muestra la barra de sesion: decir «Mi cuenta·Fulano»
+           junto a «Escriba su codigo» hace dudar de si ya se entro o no. *@
+        @if (User.Identity?.IsAuthenticated == true && ViewData["SinBarra"] == null)
         {
             @if (User.IsInRole(DIAN.Admin.Web.Roles.Operador)) { <a asp-page="/Auditoria" class="suave">Auditoría</a> }
             <span class="sp"></span>

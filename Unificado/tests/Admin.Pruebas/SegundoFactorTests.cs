@@ -266,6 +266,23 @@ public class SegundoFactorWebTests : IDisposable
     }
 
     [Fact]
+    public async Task Volver_al_ingreso_anula_el_codigo_pendiente()
+    {
+        var cliente = Cliente(publica: true);
+        await Ingresar(cliente);
+        var codigo = _canal.Codigo;
+
+        await cliente.GetAsync("/Login");
+
+        // El intento de antes ya no existe: la pagina del segundo factor devuelve al ingreso
+        // en vez de aceptar el codigo que se envio.
+        var respuesta = await cliente.GetAsync("/Codigo");
+        Assert.Equal(HttpStatusCode.Redirect, respuesta.StatusCode);
+        Assert.Equal("/Login", respuesta.Headers.Location!.OriginalString);
+        Assert.NotEmpty(codigo);
+    }
+
+    [Fact]
     public async Task Por_la_red_interna_se_entra_sin_codigo()
     {
         var cliente = Cliente(publica: false);

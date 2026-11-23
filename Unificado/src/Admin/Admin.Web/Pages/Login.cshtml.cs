@@ -28,6 +28,20 @@ namespace DIAN.Admin.Web.Pages
 
         public string? Error { get; private set; }
 
+        /// <summary>
+        /// Volver al ingreso anula el codigo pendiente: no debe quedar uno vivo mientras se pide otro, ni seguir
+        /// sirviendo si quien volvio no era el dueño de la sesion.
+        /// </summary>
+        public void OnGet()
+        {
+            var ticket = Request.Cookies[Ingreso.CookieTicket];
+            if (!string.IsNullOrEmpty(ticket))
+            {
+                _segundoFactor.Cancelar(ticket);
+                Ingreso.BorrarTicket(HttpContext);
+            }
+        }
+
         public async Task<IActionResult> OnPostAsync(string usuario, string clave)
         {
             if (await _usuarios.ValidarAsync(usuario ?? string.Empty, clave ?? string.Empty))

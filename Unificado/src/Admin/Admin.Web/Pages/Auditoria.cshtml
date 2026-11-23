@@ -5,12 +5,18 @@
 <h1>Auditoría</h1>
 <section>
     <p class="suave">Últimos 200 cambios. Nunca incluye claves, PIN ni contraseñas.</p>
-    <table>
+    <table class="registro">
         <thead><tr><th>Fecha (UTC)</th><th>Usuario</th><th>Acción</th><th>Cliente</th><th>Detalle</th></tr></thead>
         <tbody>
         @foreach (var e in Model.Entradas)
         {
-            <tr><td class="suave">@e.FechaUtc.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@e.Usuario</td><td>@e.Accion</td><td>@e.Cliente</td><td class="suave">@e.Detalle</td></tr>
+            <tr>
+                <td class="suave nowrap" data-rotulo="Fecha (UTC)">@e.FechaUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td data-rotulo="Usuario">@e.Usuario</td>
+                <td class="nowrap" data-rotulo="Acción">@e.Accion</td>
+                <td data-rotulo="Cliente">@e.Cliente</td>
+                <td class="suave" data-rotulo="Detalle">@e.Detalle</td>
+            </tr>
         }
         </tbody>
     </table>

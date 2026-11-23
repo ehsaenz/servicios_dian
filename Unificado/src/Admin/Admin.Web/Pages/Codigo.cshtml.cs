@@ -26,6 +26,20 @@ namespace DIAN.Admin.Web.Pages
 
         public int Minutos => (int)SegundoFactor.Vigencia.TotalMinutes;
 
+        /// <summary>
+        /// Celular al que fue el codigo, enmascarado. Decirlo evita la duda de «si llegara al telefono correcto»
+        /// sin publicar el numero a quien tenga la pantalla delante.
+        /// </summary>
+        public string Destino
+        {
+            get
+            {
+                var usuario = _segundoFactor.UsuarioDe(Ticket);
+                var telefono = usuario == null ? null : _usuarios.TelefonoDe(usuario);
+                return telefono == null ? "registrado" : AdminUsuarios.Enmascarar(telefono);
+            }
+        }
+
         private string? Ticket => Request.Cookies[Ingreso.CookieTicket];
 
         public IActionResult OnGet() =>

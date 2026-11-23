@@ -1,16 +1,19 @@
 @page
 @model CodigoModel
-@{ ViewData["Title"] = "Código de verificación"; }
+@{ ViewData["Title"] = "Código de verificación"; ViewData["SinBarra"] = true; }
 
 <section style="max-width:380px;margin:40px auto">
     <h1>Código de verificación</h1>
-    <p>Enviamos un código de seis dígitos por WhatsApp al celular registrado. Vence en @Model.Minutos minutos.</p>
+    <p>Le enviamos un código de seis dígitos por WhatsApp al celular <strong>@Model.Destino</strong>. Vence en @Model.Minutos minutos.</p>
     @if (Model.Error != null) { <div class="msg error">@Model.Error</div> }
     <form method="post">
         <label for="codigo">Código</label>
-        <input type="text" id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code"
+        <input type="text" id="codigo" name="codigo" class="codigo" inputmode="numeric" autocomplete="one-time-code"
                maxlength="6" pattern="[0-9]{6}" required autofocus />
         <button>Verificar</button>
     </form>
-    <p><a href="/Login">Volver al ingreso</a></p>
+    <p class="suave">
+        ¿No le llegó? <a asp-page="/Login">Vuelva al ingreso</a> para recibir uno nuevo; el anterior deja de servir.
+        Si usted no pidió este código, cambie su contraseña y avise a soporte.
+    </p>
 </section>
