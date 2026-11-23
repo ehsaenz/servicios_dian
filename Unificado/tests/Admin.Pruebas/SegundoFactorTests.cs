@@ -105,6 +105,27 @@ public class SegundoFactorUnitarioTests
     }
 
     [Fact]
+    public void Restablecer_la_contrasena_conserva_el_celular_del_segundo_factor()
+    {
+        var raiz = Path.Combine(Path.GetTempPath(), "dian-2fa-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var usuarios = new AdminUsuarios(raiz);
+            usuarios.Crear("ana", "una-clave-bien-larga");
+            usuarios.FijarTelefono("ana", "3183837137");
+
+            // crear-admin es tambien el comando para restablecer una contraseña olvidada.
+            usuarios.Crear("ana", "otra-clave-bien-larga");
+
+            Assert.Equal("573183837137", usuarios.TelefonoDe("ana"));
+        }
+        finally
+        {
+            try { Directory.Delete(raiz, true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public void Sin_clave_de_api_el_canal_se_considera_no_configurado()
     {
         Assert.False(new OpcionesWhatsApp { ClaveApi = string.Empty }.Configurado);

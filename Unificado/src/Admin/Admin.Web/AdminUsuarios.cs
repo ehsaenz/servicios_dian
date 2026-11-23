@@ -74,7 +74,12 @@ namespace DIAN.Admin.Web
                     Usuario = usuario,
                     Sal = Convert.ToBase64String(sal),
                     Hash = Convert.ToBase64String(Derivar(clave, sal)),
-                    ClienteId = string.IsNullOrWhiteSpace(clienteId) ? null : clienteId
+                    ClienteId = string.IsNullOrWhiteSpace(clienteId) ? null : clienteId,
+
+                    // `crear-admin` tambien sirve para restablecer la contraseña de un operador. Si se perdiera el
+                    // celular, quien la restablece se quedaria sin segundo factor y sin entrada publica, justo cuando
+                    // mas falta le hace entrar.
+                    Telefono = previo?.Telefono
                 });
                 Escribir(lista);
             }
