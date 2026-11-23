@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -41,7 +42,10 @@ namespace DIAN.Admin.Web
         {
             if (!_opciones.Configurado)
             {
-                _registro.LogWarning("WhatsApp sin configurar: falta la URL, la sesión o la clave (Whatsapp:*).");
+                _registro.LogWarning(_opciones.ClaveImprimible
+                    ? "WhatsApp sin configurar: falta la URL, la sesión o la clave (Whatsapp:*)."
+                    : "La clave de WhatsApp (Whatsapp:ClaveApi) tiene caracteres que no caben en una cabecera HTTP. "
+                      + "Suele ser el archivo de entorno guardado con otra codificación: vuelva a escribir la línea en ASCII.");
                 return false;
             }
 
@@ -86,7 +90,13 @@ namespace DIAN.Admin.Web
         public int SegundosEspera { get; init; } = 20;
 
         public bool Configurado =>
-            !string.IsNullOrWhiteSpace(Url) && !string.IsNullOrWhiteSpace(Sesion) && !string.IsNullOrWhiteSpace(ClaveApi);
+            !string.IsNullOrWhiteSpace(Url) && !string.IsNullOrWhiteSpace(Sesion) && !string.IsNullOrWhiteSpace(ClaveApi) && ClaveImprimible;
+
+        /// <summary>
+        /// Una cabecera HTTP solo admite ASCII: con un byte de más (un archivo de entorno guardado en otra codificación,
+        /// por ejemplo) la petición falla con un error que no dice de dónde viene. Mejor tratarla como no configurada.
+        /// </summary>
+        public bool ClaveImprimible => ClaveApi.All(c => c > 32 && c < 127);
 
         public static OpcionesWhatsApp Desde(Microsoft.Extensions.Configuration.IConfiguration configuracion) => new OpcionesWhatsApp
         {

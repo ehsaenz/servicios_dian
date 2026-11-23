@@ -110,6 +110,17 @@ public class SegundoFactorUnitarioTests
         Assert.False(new OpcionesWhatsApp { ClaveApi = string.Empty }.Configurado);
         Assert.True(new OpcionesWhatsApp { ClaveApi = "algo" }.Configurado);
     }
+
+    [Theory]
+    [InlineData("clave-con-eñe")]
+    [InlineData("clave con espacio")]
+    [InlineData("clave-con-tabulador	")]
+    public void Una_clave_que_no_cabe_en_una_cabecera_http_cuenta_como_no_configurada(string clave)
+    {
+        // Pasó en el servidor: el archivo de entorno quedó con otra codificación y HttpClient fallaba con
+        // «Request headers must contain only ASCII characters», sin decir qué cabecera.
+        Assert.False(new OpcionesWhatsApp { ClaveApi = clave }.Configurado);
+    }
 }
 
 [Collection("admin-web")]
