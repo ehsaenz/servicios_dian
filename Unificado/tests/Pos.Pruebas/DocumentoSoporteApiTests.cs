@@ -34,6 +34,23 @@ public sealed class FabricaFalsa : IFabricaEnviadorDian
     /// <summary>Si es true, la respuesta de EnviarDocumento incluye un ApplicationResponse 02 del documento recibido.</summary>
     public bool ConApplicationResponse { get; set; }
 
+    private byte[]? _ultimoSet;
+
+    /// <summary>Como la DIAN: ApplicationResponse con código 02 y el número y CUFE del documento recibido.</summary>
+    private static byte[] ApplicationResponseDe(byte[] xmlFirmado)
+    {
+        var recibido = System.Xml.Linq.XDocument.Parse(System.Text.Encoding.UTF8.GetString(xmlFirmado));
+        System.Xml.Linq.XNamespace cbc = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+        var ar = "<ApplicationResponse xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2\"" +
+                 " xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\"" +
+                 " xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\">" +
+                 "<cbc:IssueDate>2026-11-08</cbc:IssueDate><cbc:IssueTime>10:15:32-05:00</cbc:IssueTime>" +
+                 "<cac:DocumentResponse><cac:Response><cbc:ResponseCode>02</cbc:ResponseCode></cac:Response>" +
+                 "<cac:DocumentReference><cbc:ID>" + recibido.Root!.Element(cbc + "ID")!.Value + "</cbc:ID><cbc:UUID>" +
+                 recibido.Root.Element(cbc + "UUID")!.Value + "</cbc:UUID></cac:DocumentReference></cac:DocumentResponse></ApplicationResponse>";
+        return System.Text.Encoding.UTF8.GetBytes(ar);
+    }
+
     public IEnviadorDian Crear(AmbienteServicio ambiente, X509Certificate2 certificado)
     {
         Llamadas.Add((ambiente, certificado.Subject));
@@ -49,20 +66,7 @@ public sealed class FabricaFalsa : IFabricaEnviadorDian
         {
             _padre.Enviados.Add(xmlFirmado);
             var respuesta = new DianResponse { StatusCode = _padre.CodigoRespuesta, StatusMessage = "Procesado Correctamente", XmlDocumentKey = "uuid-falso" };
-            if (_padre.ConApplicationResponse)
-            {
-                // Como la DIAN: ApplicationResponse con código 02 y el número y CUFE del documento recibido.
-                var recibido = System.Xml.Linq.XDocument.Parse(System.Text.Encoding.UTF8.GetString(xmlFirmado));
-                System.Xml.Linq.XNamespace cbc = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
-                var ar = "<ApplicationResponse xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2\"" +
-                         " xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\"" +
-                         " xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\">" +
-                         "<cbc:IssueDate>2026-11-08</cbc:IssueDate><cbc:IssueTime>10:15:32-05:00</cbc:IssueTime>" +
-                         "<cac:DocumentResponse><cac:Response><cbc:ResponseCode>02</cbc:ResponseCode></cac:Response>" +
-                         "<cac:DocumentReference><cbc:ID>" + recibido.Root!.Element(cbc + "ID")!.Value + "</cbc:ID><cbc:UUID>" +
-                         recibido.Root.Element(cbc + "UUID")!.Value + "</cbc:UUID></cac:DocumentReference></cac:DocumentResponse></ApplicationResponse>";
-                respuesta.XmlBase64Bytes = System.Text.Encoding.UTF8.GetBytes(ar);
-            }
+            if (_padre.ConApplicationResponse) respuesta.XmlBase64Bytes = ApplicationResponseDe(xmlFirmado);
 
             return respuesta;
         }
@@ -88,11 +92,20 @@ public sealed class FabricaFalsa : IFabricaEnviadorDian
         {
             _padre.Enviados.AddRange(xmlFirmados);
             _padre.SetsUsados.Add(idSetPruebas);
+            _padre._ultimoSet = xmlFirmados[0];
             return new UploadDocumentResponse { ZipKey = "zip-falso" };
         }
 
         public DianResponse[] ConsultarDocumentos(string zipKey) => _padre.SetYaAceptado
-            ? new[] { new DianResponse { StatusCode = "2", StatusMessage = "Set de prueba con identificador x se encuentra Aceptado." } }
+            ? new[]
+            {
+                new DianResponse
+                {
+                    StatusCode = "2",
+                    StatusMessage = "Set de prueba con identificador x se encuentra Aceptado.",
+                    XmlBase64Bytes = _padre.ConApplicationResponse && _padre._ultimoSet != null ? ApplicationResponseDe(_padre._ultimoSet) : null
+                }
+            }
             : new[] { new DianResponse { StatusCode = "00", StatusMessage = "ok " + zipKey } };
 
         public DianResponse ConsultarDocumento(string uuid) => new DianResponse { StatusCode = "00", StatusMessage = "ok " + uuid };

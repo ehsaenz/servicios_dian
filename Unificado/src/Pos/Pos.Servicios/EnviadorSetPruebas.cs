@@ -25,7 +25,8 @@ namespace DIAN.Pos.Servicios
             string carpetaCliente,
             string nombreArchivoSet,
             TimeSpan esperaSet,
-            string uuid = "")
+            string uuid = "",
+            Action<byte[]>? alRecibirRespuesta = null)
         {
             var subida = enviador.EnviarSetPruebas(new List<byte[]> { firmado }, testSetId);
 
@@ -52,6 +53,7 @@ namespace DIAN.Pos.Servicios
 
             var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, subida.ZipKey, numero, uuid);
             Guardar(carpetaCliente, nombreArchivoSet, resultado);
+            if (dian?.XmlBase64Bytes != null) alRecibirRespuesta?.Invoke(dian.XmlBase64Bytes);
             return resultado;
         }
 

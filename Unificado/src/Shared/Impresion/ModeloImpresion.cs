@@ -66,6 +66,9 @@ public sealed class DocumentoImpresion
     public string FechaValidacionDian { get; set; } = string.Empty;
     public string ResolucionTexto { get; set; } = string.Empty;
 
+    /// <summary>Logo de la sucursal en base64 (png/jpg). Lo consume la plantilla ([Logo]); vacío si no hay logo.</summary>
+    public string Logo { get; set; } = string.Empty;
+
     public string ToJson() => JsonSerializer.Serialize(this, OpcionesJson);
 }
 

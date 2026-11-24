@@ -30,6 +30,7 @@ Todo va por HTTPS, con `Content-Type: application/json` en los cuerpos. La URL b
 3. **Envíelo** con `POST /api/documento/agregar`. Valida, traduce y firma antes de responder **202** con el registro y su CUFE. Normalmente queda `Recibido` y el envío DIAN corre en segundo plano; un duplicado puede devolver el estado existente y el modo síncrono puede devolver un resultado final.
 4. **Espere el resultado**: por **webhook** (aviso firmado cuando queda `Aprobado` o `Rechazado`, ver [webhook.md](webhook.md)) o por **polling** (`GET /api/documento/estado/{numero}` o, mejor, `GET /api/documento/cambios?desde=N`). Ver [estados-y-errores.md](estados-y-errores.md).
 5. **Descargue lo oficial**: `GET /api/documento/pdf/{numero}` (solo aprobados), `xml/{numero}` y `respuesta-dian/{numero}`. Guárdelo en su sistema. Ver [pdf-y-correo.md](pdf-y-correo.md).
+   Si el servicio no tiene local el XML y el acuse de un documento (p. ej. facturas anteriores a esta versión o enviadas desde otra instancia), envíe el CUFE: `GET /api/documento/pdf/{numero}?cufe={CUFE}`, `xml/{numero}?cufe=...` o `respuesta-dian/{numero}?cufe=...`. El servicio consulta la DIAN por ese CUFE, valida que el acuse sea de aprobación (02) del mismo CUFE, lo guarda en local y responde. Si la DIAN no lo devuelve o no lo aprueba, responde **502** con el motivo. Sin `cufe`, solo responde con lo local.
 
 Antes de pedir el paso a producción, recorra la [lista de verificación](lista-de-verificacion.md).
 

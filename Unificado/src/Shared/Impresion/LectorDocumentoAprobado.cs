@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -55,6 +56,27 @@ public static class LectorDocumentoAprobado
         var modelo = LeerDocumento(documento);
         modelo.CUFE = cufe;
         modelo.FechaValidacionDian = validacion;
+        modelo.Aprobado = true;
+        return modelo;
+    }
+
+    /// <summary>
+    /// Solo para envíos al set de pruebas aceptados cuando la DIAN no devolvió el ApplicationResponse (XmlBase64Bytes vacío).
+    /// El set ya marcó el documento como aceptado; se toma la fecha de aceptación registrada (UTC) y no se verifica un ApplicationResponse.
+    /// NO sirve para documentos de producción: para esos sigue siendo obligatorio <see cref="DesdeDocumentoYRespuesta"/>.
+    /// </summary>
+    public static DocumentoImpresion DesdeDocumentoAceptadoEnSet(string xmlDocumento, DateTime fechaAceptacionUtc)
+    {
+        var documento = Cargar(xmlDocumento, "el documento").Root!;
+        var cufe = Texto(documento, "UUID");
+        if (cufe.Length == 0)
+        {
+            throw new DocumentoNoAprobadoException("El documento no trae CUFE.");
+        }
+
+        var modelo = LeerDocumento(documento);
+        modelo.CUFE = cufe;
+        modelo.FechaValidacionDian = fechaAceptacionUtc.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " (UTC-5)";
         modelo.Aprobado = true;
         return modelo;
     }
@@ -144,6 +166,12 @@ public static class LectorDocumentoAprobado
         switch (doc.Name.LocalName)
         {
             case "CreditNote":
+                // Las notas de ajuste del POS (94) y del documento soporte (95) son CreditNote; se distinguen por ProfileID.
+                var perfil = Texto(doc, "ProfileID");
+                if (perfil.Contains("documento equivalente", StringComparison.OrdinalIgnoreCase))
+                    return ("NATP", "94", "NOTA DE AJUSTE CRÉDITO AL DOCUMENTO EQUIVALENTE POS ELECTRÓNICO");
+                if (perfil.Contains("documento soporte", StringComparison.OrdinalIgnoreCase))
+                    return ("NSDS", "95", "NOTA DE AJUSTE AL DOCUMENTO SOPORTE ELECTRÓNICO");
                 return ("NC", "91", "NOTA CRÉDITO ELECTRÓNICA");
             case "DebitNote":
                 return ("ND", "92", "NOTA DÉBITO ELECTRÓNICA");
@@ -154,6 +182,7 @@ public static class LectorDocumentoAprobado
                     "02" => ("FE", "02", "FACTURA ELECTRÓNICA DE EXPORTACIÓN"),
                     "03" => ("FC", "03", "FACTURA ELECTRÓNICA DE CONTINGENCIA"),
                     "05" => ("DS", "05", "DOCUMENTO SOPORTE EN ADQUISICIONES A NO OBLIGADOS A FACTURAR"),
+                    "20" => ("TV", "20", "DOCUMENTO EQUIVALENTE POS ELECTRÓNICO"),
                     _ => ("FV", string.IsNullOrEmpty(codigo) ? "01" : codigo, "FACTURA ELECTRÓNICA DE VENTA")
                 };
             default:
@@ -177,6 +206,18 @@ public static class LectorDocumentoAprobado
         if (item.Codigo.Length == 0)
         {
             item.Codigo = item.Referencia;
+        }
+
+        // Sin SellersItemIdentification, la referencia del vendedor (p. ej. MARLIT: "5P-101D - SANDALIA ...") viene al
+        // inicio de Description. Se separa para que no quede mezclada en Artículo.
+        if (item.Referencia.Length == 0)
+        {
+            var partes = Regex.Match(item.Detalle, @"^(\S+)\s+-\s+(.+)$", RegexOptions.Singleline);
+            if (partes.Success)
+            {
+                item.Referencia = partes.Groups[1].Value;
+                item.Detalle = partes.Groups[2].Value.Trim();
+            }
         }
 
         item.ValorDescuento = Hijos(linea, "AllowanceCharge")

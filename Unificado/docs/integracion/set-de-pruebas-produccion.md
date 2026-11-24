@@ -18,7 +18,8 @@ El archivo queda en la carpeta de datos del cliente; el panel de administración
 
 ## Comportamiento común y respuesta
 
-- El documento **no** se guarda en el almacén de operaciones ni entra en reintentos o idempotencia local.
+- El documento **no** entra en el almacén de operaciones: no aparece en `GET /api/documento/cambios` ni en `estado`, no tiene webhook y no entra en reintentos ni en idempotencia local.
+- En `POST /api/documento/agregar` con `X-Envio-Set: true` el envío sí queda en un almacén separado (carpeta `documentos-set`, junto a `documentos`, en la carpeta del cliente): XML firmado, respuesta de la DIAN y, si quedó aceptado, el PDF del `01`. Desde ahí `GET /api/documento/xml/{numero}`, `/respuesta-dian/{numero}` y `/pdf/{numero}` lo entregan también durante habilitación. El PDF de los demás tipos (`91`, `92`, `20`, `94`, `05`, `95`) depende de sus plantillas; si no hay, `pdf` responde `503` con el motivo.
 - La API valida los datos del bloque, firma con el certificado del cliente y lo envía con `EnviarSetPruebas` usando el `TestSetId` configurado para ese módulo, consultando el resultado del lote (`GetStatusZip`).
 - Respuesta `200` con `{ Estado, Mensaje, ZipKey, Numero, FechaUtc, CodigoDian, Uuid }`:
   - `aceptado`: la DIAN respondió «se encuentra Aceptado» (código 2). Solo entonces el bloque cumple el requisito de set para pasar a producción.

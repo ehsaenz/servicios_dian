@@ -117,8 +117,6 @@
       <Controls>
         <Item1 Ref="49" ControlType="XRPictureBox" Name="pictureBox1" Sizing="ZoomImage" SizeF="129.166656,124.780693" LocationFloat="63.2993851,60.63598">
           <ExpressionBindings>
-            <Item1 Ref="50" EventName="BeforePrint" PropertyName="ImageUrl" Expression="[System].[Convert].FromBase64String([Logo])&#xA;" />
-            <Item2 Ref="51" EventName="BeforePrint" PropertyName="ImageSource" Expression="[System].[Convert].FromBase64String([Logo])" />
           </ExpressionBindings>
         </Item1>
         <Item2 Ref="52" ControlType="XRLabel" Name="label1" CanGrow="false" AccessibleRole="Heading1" TextAlignment="MiddleCenter" SizeF="299.5066,29.9787827" LocationFloat="483.962524,103.844292" Font="Segoe UI, 22.5pt, style=Bold" Padding="0,0,0,0,100">

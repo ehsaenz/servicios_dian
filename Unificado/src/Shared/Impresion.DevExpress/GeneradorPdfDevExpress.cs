@@ -11,8 +11,12 @@ public sealed class GeneradorPdfDevExpress : IGeneradorPdf
     private static readonly Dictionary<string, string> Plantillas = new()
     {
         ["01"] = "FacturaVentaElectronica0.repx",
-        ["91"] = "NotaElectronica0.repx",
-        ["92"] = "NotaElectronica0.repx"
+        ["05"] = "DocumentoSoporteElectronico0.repx",
+        ["20"] = "TiqueteVentaElectronica80.repx",
+        ["91"] = "NotaCreditoElectronica0.repx",
+        ["92"] = "NotaDebitoElectronica0.repx",
+        ["94"] = "NotaAjustePosElectronica94.repx",
+        ["95"] = "NotaAjusteDocumentoSoporteElectronica95.repx"
     };
 
     private readonly string _carpetaPlantillas;

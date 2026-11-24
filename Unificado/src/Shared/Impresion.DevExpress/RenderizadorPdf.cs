@@ -20,6 +20,13 @@ public sealed class RenderizadorPdf
     // y en Linux falla pidiendo libgdiplus. Este resolvedor los toma de la carpeta de la aplicación, donde se copian.
     static RenderizadorPdf()
     {
+        // En Windows DevExpress dibuja con GDI+/DirectWrite por defecto, y el logo PNG de la plantilla no sale igual que en
+        // Linux. Se fuerza Skia en ambas plataformas para que el PDF sea idéntico en DEV Windows y en producción Linux.
+        if (OperatingSystem.IsWindows())
+        {
+            global::DevExpress.Drawing.Internal.DXDrawingEngine.ForceSkia();
+        }
+
         AssemblyLoadContext.Default.Resolving += (contexto, nombre) =>
         {
             if (nombre.Name is null || !nombre.Name.StartsWith("DevExpress.", StringComparison.Ordinal))
@@ -61,19 +68,38 @@ public sealed class RenderizadorPdf
         reporte.ScriptReferences = null;
         reporte.ScriptsSource = string.Empty;
 
-        var origen = new JsonDataSource { JsonSource = new CustomJsonSource(documento.ToJson()) };
-        origen.Fill();
-        reporte.DataSource = origen;
-
-        if (logo is { Length: > 0 } && reporte.FindControl("pictureBox1", true) is XRPictureBox imagen)
+        // El logo se asigna directo al control pictureBox1. Enlazarlo desde la plantilla no funciona: un enlace
+        // FromBase64String([Logo]) produce bytes, y XRPictureBox no los convierte en imagen, así que sale en blanco.
+        // La plantilla no tiene enlace para ese control (ver reportes/03FacturaVenta0.origen.repx).
+        var archivoLogo = logo is { Length: > 0 } ? Path.Combine(Path.GetTempPath(), "amberfox-logo-" + Guid.NewGuid().ToString("N") + ".png") : null;
+        try
         {
-            using var flujoLogo = new MemoryStream(logo);
-            imagen.ImageSource = new ImageSource(DXImage.FromStream(flujoLogo));
-        }
+            if (archivoLogo is not null)
+            {
+                File.WriteAllBytes(archivoLogo, logo!);
+            }
 
-        using var salida = new MemoryStream();
-        reporte.ExportToPdf(salida);
-        return salida.ToArray();
+            if (reporte.FindControl("pictureBox1", true) is XRPictureBox caja)
+            {
+                caja.ExpressionBindings.Clear();
+                caja.ImageSource = archivoLogo is not null ? ImageSource.FromFile(archivoLogo) : null;
+            }
+
+            var origen = new JsonDataSource { JsonSource = new CustomJsonSource(documento.ToJson()) };
+            origen.Fill();
+            reporte.DataSource = origen;
+
+            using var salida = new MemoryStream();
+            reporte.ExportToPdf(salida);
+            return salida.ToArray();
+        }
+        finally
+        {
+            if (archivoLogo is not null && File.Exists(archivoLogo))
+            {
+                File.Delete(archivoLogo);
+            }
+        }
     }
 
     private static void RegistrarFuentes(string carpeta)

@@ -10,6 +10,9 @@
     <DevExpress24_1Dir Condition="'$(DevExpress24_1Dir)' == ''">$(ProgramFiles)\DevExpress 24.1</DevExpress24_1Dir>
     <DevExpressBinPath Condition="'$(DevExpressBinPath)' == ''">$(DevExpress24_1Dir)\Components\Bin\NetCore</DevExpressBinPath>
     <NoWarn>$(NoWarn);CA1416;NU1701</NoWarn>
+    <!-- La API carga esta biblioteca desde su propia carpeta (Pdf:Carpeta): los paquetes (SkiaSharp, HarfBuzz) deben
+         copiarse junto a ella, porque una biblioteca no los copia sola a su salida. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,7 +25,9 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="7.3.0.3" />
     <PackageReference Include="System.CodeDom" Version="4.4.0" />
-    <PackageReference Include="System.Drawing.Common" Version="4.7.2" />
+    <!-- ExcludeAssets=runtime: compila contra este paquete pero no copia su DLL a la salida; en net10 debe usarse el
+         System.Drawing.Common de la plataforma (el de 4.7.2 lanza PlatformNotSupported al crear fuentes GDI+). -->
+    <PackageReference Include="System.Drawing.Common" Version="4.7.2" ExcludeAssets="runtime" />
     <PackageReference Include="System.Security.Permissions" Version="4.7.0" />
   </ItemGroup>
 

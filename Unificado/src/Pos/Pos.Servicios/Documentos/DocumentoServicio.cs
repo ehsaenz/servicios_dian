@@ -46,6 +46,9 @@ namespace DIAN.Pos.Servicios.Documentos
         private readonly CertificadoCache _certificados;
         private readonly IFabricaEnviadorDian _fabrica;
         private readonly AlmacenDocumentos _almacen;
+        private readonly AlmacenDocumentos _almacenSet;
+        // Documentos traídos de la DIAN por CUFE (no estaban completos en local). No aparecen en /cambios ni entran en reintentos.
+        private readonly AlmacenDocumentos _almacenRecuperados;
         private readonly ILogger _registro;
         private readonly SalidasDocumento _salidas;
         private readonly string _carpetaCliente;
@@ -61,6 +64,8 @@ namespace DIAN.Pos.Servicios.Documentos
             _fabrica = fabrica;
             _carpetaCliente = Path.Combine(carpetaDatos, AlmacenDocumentos.Nombre(tenant.Id));
             _almacen = AlmacenDocumentos.Para(_carpetaCliente);
+            _almacenSet = AlmacenDocumentos.Para(_carpetaCliente, "documentos-set");
+            _almacenRecuperados = AlmacenDocumentos.Para(_carpetaCliente, "documentos-recuperados");
             _registro = registro;
         }
 
@@ -123,8 +128,10 @@ namespace DIAN.Pos.Servicios.Documentos
 
         /// <summary>
         /// Envío al set de pruebas de facturación (solo habilitación, con TestSetId): firma el documento, lo envía con
-        /// EnviarSetPruebas y consulta el resultado. NO guarda el documento en el almacén: no entra en reintentos ni en la
-        /// lista del ERP. El estado queda en set-facturacion.json, que el panel de administración solo lee.
+        /// EnviarSetPruebas y consulta el resultado. El documento NO entra en el almacén principal: no aparece en
+        /// <c>/cambios</c>, no entra en reintentos ni en el webhook. Sí se guarda en el almacén separado <c>documentos-set</c>
+        /// (XML firmado, respuesta de la DIAN y PDF si quedó aceptado) para que las descargas funcionen durante habilitación.
+        /// El estado resumido queda en set-facturacion.json, que el panel de administración solo lee.
         /// </summary>
         public ResultadoSet ValidarEnSet(DocumentoDian doc)
         {
@@ -136,7 +143,129 @@ namespace DIAN.Pos.Servicios.Documentos
 
             var firmado = FirmarDocumento(doc, out var cufe);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
-            return EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente, "set-facturacion.json", EsperaSet, cufe);
+            byte[]? respuestaDian = null;
+            var resultado = EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente,
+                "set-facturacion.json", EsperaSet, cufe, r => respuestaDian = r);
+            GuardarEnSet(doc, cufe, firmado, respuestaDian, resultado);
+            return resultado;
+        }
+
+        // Guarda un envío al set en el almacén separado. Un envío nuevo del mismo número reemplaza al anterior.
+        private void GuardarEnSet(DocumentoDian doc, string cufe, byte[] firmado, byte[]? respuestaDian, ResultadoSet resultado)
+        {
+            var registro = _almacenSet.Buscar(doc.Numero) ?? new DocumentoRegistro { FechaRecibido = DateTime.UtcNow };
+            registro.Numero = doc.Numero;
+            registro.TipoDocDian = doc.TipoDocDian;
+            registro.TipoDocErp = doc.TipoDocErp ?? string.Empty;
+            registro.Matricula = doc.Emisor?.MatriculaMercantil ?? string.Empty;
+            registro.CUFE = cufe;
+            registro.Estado = resultado.Estado == "aceptado" ? EstadoDocumento.Aprobado
+                : resultado.Estado == "rechazado" ? EstadoDocumento.Rechazado
+                : EstadoDocumento.Error;
+            registro.Mensaje = resultado.Mensaje;
+            registro.Errores = new List<string>();
+            registro.Habilitacion = true;
+            registro.Pdf = false;
+            registro.PdfMensaje = string.Empty;
+
+            _almacenSet.GuardarXml(doc.Numero, ".xml", firmado);
+            if (respuestaDian != null) _almacenSet.GuardarXml(doc.Numero, "-respuesta.xml", respuestaDian);
+            registro = _almacenSet.Guardar(registro, esCambioParaElERP: false);
+
+            if (registro.Estado == EstadoDocumento.Aprobado) GenerarPdfAprobado(_almacenSet, registro);
+        }
+
+        // PDF de un documento aprobado guardado en un almacén de descarga (set o recuperados). Sin correo: no es un envío real
+        // al cliente. Un fallo queda anotado en el registro.
+        private void GenerarPdfAprobado(AlmacenDocumentos almacen, DocumentoRegistro registro)
+        {
+            try
+            {
+                if (_salidas.Pdf == null)
+                {
+                    registro.PdfMensaje = "El servicio no tiene generador de PDF configurado.";
+                }
+                else
+                {
+                    var xml = System.Text.Encoding.UTF8.GetString(almacen.LeerXml(registro.Numero, ".xml")!);
+                    var respuesta = almacen.LeerXml(registro.Numero, "-respuesta.xml");
+                    // Sin ApplicationResponse (la DIAN no lo devolvió en el set) el set ya lo marcó aceptado: se usa el XML firmado
+                    // y la fecha de envío al set (el envío es síncrono, así que coincide con la aceptación).
+                    var modelo = respuesta != null
+                        ? DIAN.Impresion.LectorDocumentoAprobado.DesdeDocumentoYRespuesta(xml, System.Text.Encoding.UTF8.GetString(respuesta))
+                        : DIAN.Impresion.LectorDocumentoAprobado.DesdeDocumentoAceptadoEnSet(xml, registro.FechaRecibido);
+                    var perfil = _salidas.Perfil?.Invoke(_tenant, modelo.Emisor.MatriculaMercantil)
+                                 ?? new PerfilImpresion { RazonSocial = _tenant.Emisor.RazonSocial, Establecimiento = _tenant.Emisor.RazonSocial };
+                    almacen.GuardarXml(registro.Numero, ".pdf", _salidas.Pdf.Generar(modelo, perfil.Logo));
+                    registro.Pdf = true;
+                    registro.PdfMensaje = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                registro.Pdf = false;
+                registro.PdfMensaje = ex is SinPlantillaException ? ex.Message : "No se pudo generar el PDF: " + ex.Message;
+                if (!(ex is SinPlantillaException)) _registro.LogError(ex, "Error generando el PDF de {Documento}", registro.Numero);
+            }
+
+            almacen.Guardar(registro, esCambioParaElERP: false);
+        }
+
+        /// <summary>
+        /// Trae de la DIAN, por CUFE, el XML y el acuse (ApplicationResponse) de un documento que no está completo en el
+        /// almacén local (facturas anteriores a esta versión, o enviadas desde otra instancia). Solo guarda si el acuse
+        /// aprueba (02) el mismo CUFE del documento; si no, lanza una excepción y no guarda nada.
+        /// </summary>
+        private DocumentoRegistro RecuperarDesdeDian(string numero, string cufe)
+        {
+            // Mismo candado que el resto de operaciones del documento: no compite con un envío o un PDF en curso.
+            lock (CandadoDe(_tenant.Id, numero))
+            {
+                var enviador = _fabrica.Crear(Habilitacion ? AmbienteServicio.PRUEBAS : AmbienteServicio.PRODUCCION, _certificados.Obtener(_tenant));
+
+                var documento = enviador.ObtenerDocumentoXml(cufe);
+                if (string.IsNullOrEmpty(documento?.XmlBytesBase64))
+                {
+                    throw new InvalidOperationException("La DIAN no devolvió el XML del documento con ese CUFE.");
+                }
+
+                var acuse = enviador.ConsultarDocumento(cufe);
+                if (acuse?.XmlBase64Bytes == null || acuse.XmlBase64Bytes.Length == 0)
+                {
+                    throw new InvalidOperationException("La DIAN no devolvió el acuse (ApplicationResponse) del documento.");
+                }
+
+                var xml = Convert.FromBase64String(documento.XmlBytesBase64);
+                // Lanza si la respuesta no aprueba (02) o si no corresponde al mismo CUFE del documento.
+                var modelo = DIAN.Impresion.LectorDocumentoAprobado.DesdeDocumentoYRespuesta(
+                    System.Text.Encoding.UTF8.GetString(xml), System.Text.Encoding.UTF8.GetString(acuse.XmlBase64Bytes));
+                if (!string.Equals(modelo.CUFE, cufe, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("El documento recibido de la DIAN no corresponde al CUFE pedido.");
+                }
+
+                var registro = new DocumentoRegistro
+                {
+                    FechaRecibido = DateTime.UtcNow,
+                    Numero = numero,
+                    TipoDocDian = modelo.TipoDocDian,
+                    TipoDocErp = modelo.TipoDocErp ?? string.Empty,
+                    Matricula = modelo.Emisor?.MatriculaMercantil ?? string.Empty,
+                    CUFE = cufe,
+                    Estado = EstadoDocumento.Aprobado,
+                    Mensaje = string.Empty,
+                    Errores = new List<string>(),
+                    Habilitacion = Habilitacion,
+                    Pdf = false,
+                    PdfMensaje = string.Empty
+                };
+
+                _almacenRecuperados.GuardarXml(numero, ".xml", xml);
+                _almacenRecuperados.GuardarXml(numero, "-respuesta.xml", acuse.XmlBase64Bytes);
+                registro = _almacenRecuperados.Guardar(registro, esCambioParaElERP: false);
+                GenerarPdfAprobado(_almacenRecuperados, registro);
+                return _almacenRecuperados.Buscar(numero)!;
+            }
         }
 
 
@@ -419,12 +548,54 @@ namespace DIAN.Pos.Servicios.Documentos
             }
         }
 
+        /// <summary>Estado de un documento recibido (almacén principal). Los envíos al set no aparecen aquí.</summary>
         public DocumentoRegistro? Obtener(string numero) => _almacen.Buscar(numero);
 
         public List<DocumentoRegistro> Cambios(long desde, int limite) => _almacen.CambiosDesde(desde, limite);
 
-        public byte[]? XmlFirmado(string numero) => _almacen.LeerXml(numero, ".xml");
+        // Almacén donde están los archivos de un número, en orden: recuperados (traídos de la DIAN), principal, set. Null si no existe.
+        private AlmacenDocumentos? AlmacenDe(string numero)
+        {
+            if (_almacenRecuperados.Buscar(numero) != null) return _almacenRecuperados;
+            if (_almacen.Buscar(numero) != null) return _almacen;
+            if (_almacenSet.Buscar(numero) != null) return _almacenSet;
+            return null;
+        }
 
-        public byte[]? XmlRespuestaDian(string numero) => _almacen.LeerXml(numero, "-respuesta.xml");
+        /// <summary>
+        /// Registro para descargar archivos (PDF, XML y respuesta DIAN). Si se envía el <paramref name="cufe"/> y el almacén
+        /// local no tiene el documento aprobado con XML y acuse, los trae de la DIAN por CUFE (y lanza si la DIAN no lo
+        /// aprueba o no responde). Sin CUFE, solo mira lo local. El estado y los cambios siguen leyendo el almacén principal.
+        /// </summary>
+        public DocumentoRegistro? ObtenerParaDescarga(string numero, string? cufe = null)
+        {
+            var almacen = AlmacenDe(numero);
+            var registro = almacen?.Buscar(numero);
+            if (string.IsNullOrWhiteSpace(cufe)) return registro;
+
+            var completo = registro != null && registro.Estado == EstadoDocumento.Aprobado
+                           && almacen!.LeerXml(numero, ".xml") != null && almacen.LeerXml(numero, "-respuesta.xml") != null;
+            return completo ? registro : RecuperarDesdeDian(numero, cufe!.Trim());
+        }
+
+        /// <summary>PDF de un documento aprobado: del almacén donde esté el documento (ver <see cref="AlmacenDe"/>).</summary>
+        public byte[]? PdfParaDescarga(string numero)
+        {
+            var almacen = AlmacenDe(numero);
+            if (almacen == null) return null;
+            if (ReferenceEquals(almacen, _almacen)) return Pdf(numero);
+
+            var registro = almacen.Buscar(numero);
+            if (registro == null || registro.Estado != EstadoDocumento.Aprobado) return null;
+            // Envíos al set aceptados antes de este cambio (o cuyo PDF falló): se genera bajo demanda desde el XML firmado guardado.
+            if (!registro.Pdf) GenerarPdfAprobado(almacen, registro);
+            return almacen.Buscar(numero)?.Pdf == true ? almacen.LeerXml(numero, ".pdf") : null;
+        }
+
+        public byte[]? XmlFirmado(string numero) =>
+            _almacenRecuperados.LeerXml(numero, ".xml") ?? _almacen.LeerXml(numero, ".xml") ?? _almacenSet.LeerXml(numero, ".xml");
+
+        public byte[]? XmlRespuestaDian(string numero) =>
+            _almacenRecuperados.LeerXml(numero, "-respuesta.xml") ?? _almacen.LeerXml(numero, "-respuesta.xml") ?? _almacenSet.LeerXml(numero, "-respuesta.xml");
     }
 }

@@ -26,16 +26,21 @@ namespace DIAN.Pos.Servicios.Documentos
         private readonly Dictionary<string, DocumentoRegistro> _indice = new Dictionary<string, DocumentoRegistro>(StringComparer.Ordinal);
         private bool _cargado;
 
-        public AlmacenDocumentos(string carpetaCliente)
+        /// <param name="carpetaCliente">Carpeta de datos del cliente.</param>
+        /// <param name="subcarpeta">
+        /// "documentos" (recepción normal, cambios y reintentos) o "documentos-set" (envíos al set de pruebas). Son almacenes
+        /// independientes: el set nunca aparece en <c>/cambios</c> ni entra en el mantenimiento.
+        /// </param>
+        public AlmacenDocumentos(string carpetaCliente, string subcarpeta = "documentos")
         {
-            _carpeta = Path.Combine(carpetaCliente, "documentos");
+            _carpeta = Path.Combine(carpetaCliente, subcarpeta);
         }
 
         /// <summary>Almacén compartido de la carpeta del cliente (mismo índice y mismo candado para todas las peticiones).</summary>
-        public static AlmacenDocumentos Para(string carpetaCliente)
+        public static AlmacenDocumentos Para(string carpetaCliente, string subcarpeta = "documentos")
         {
-            var clave = Path.GetFullPath(Path.Combine(carpetaCliente, "documentos"));
-            return Compartidos.GetOrAdd(clave, _ => new AlmacenDocumentos(carpetaCliente));
+            var clave = Path.GetFullPath(Path.Combine(carpetaCliente, subcarpeta));
+            return Compartidos.GetOrAdd(clave, _ => new AlmacenDocumentos(carpetaCliente, subcarpeta));
         }
 
         private string Ruta(string numero, string sufijo) => Path.Combine(_carpeta, Nombre(numero) + sufijo);

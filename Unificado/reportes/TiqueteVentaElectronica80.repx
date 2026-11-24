@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Documento equivalente POS electrónico (tipo 20) en tirilla térmica de 80 mm. Escrita a mano (no generada por
+     tools/Reportes): PageWidth 315 = 80 mm en centésimas de pulgada. Unidades: 1/100 in. -->
+<XtraReportsLayoutSerializer SerializerVersion="24.1.7.0" Ref="1" ControlType="DevExpress.XtraReports.UI.XtraReport, DevExpress.XtraReports.v24.1, Version=24.1.7.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" Name="TiqueteVentaElectronica80" Margins="8, 8, 8, 8" PageWidth="315" PageHeight="1100" Version="24.1" Font="Liberation Sans, 7.5pt">
+  <Bands>
+    <Item1 Ref="2" ControlType="TopMarginBand" Name="TopMargin" HeightF="0" Font="Liberation Sans, 7.5pt" />
+    <Item2 Ref="3" ControlType="ReportHeaderBand" Name="ReportHeader" HeightF="215" Font="Liberation Sans, 7.5pt">
+      <Controls>
+        <Item1 Ref="10" ControlType="XRLabel" Name="lblEmisor" LocationFloat="0,0" SizeF="299,30" Multiline="true" TextAlignment="TopCenter" Font="Liberation Sans, 9pt, style=Bold">
+          <ExpressionBindings>
+            <Item1 Ref="11" EventName="BeforePrint" PropertyName="Text" Expression="[Emisor].[RazonSocial]" />
+          </ExpressionBindings>
+        </Item1>
+        <Item2 Ref="12" ControlType="XRLabel" Name="lblNitEmisor" LocationFloat="0,32" SizeF="299,14" TextAlignment="TopCenter">
+          <ExpressionBindings>
+            <Item1 Ref="13" EventName="BeforePrint" PropertyName="Text" Expression="'NIT: ' + [Emisor].[NIT]" />
+          </ExpressionBindings>
+        </Item2>
+        <Item3 Ref="14" ControlType="XRLabel" Name="lblDireccion" LocationFloat="0,48" SizeF="299,24" Multiline="true" TextAlignment="TopCenter">
+          <ExpressionBindings>
+            <Item1 Ref="15" EventName="BeforePrint" PropertyName="Text" Expression="[Emisor].[LocacionPrincipal].[Direccion]" />
+          </ExpressionBindings>
+        </Item3>
+        <Item4 Ref="16" ControlType="XRLabel" Name="lblCiudad" LocationFloat="0,74" SizeF="299,14" TextAlignment="TopCenter">
+          <ExpressionBindings>
+            <Item1 Ref="17" EventName="BeforePrint" PropertyName="Text" Expression="[Emisor].[LocacionPrincipal].[NombreMunicipio] + ' - ' + [Emisor].[LocacionPrincipal].[NombreDepartamento]" />
+          </ExpressionBindings>
+        </Item4>
+        <Item5 Ref="18" ControlType="XRLabel" Name="lblTitulo" LocationFloat="0,94" SizeF="299,28" Multiline="true" TextAlignment="TopCenter" Font="Liberation Sans, 8pt, style=Bold">
+          <ExpressionBindings>
+            <Item1 Ref="19" EventName="BeforePrint" PropertyName="Text" Expression="[TipoDocObj].[Nombre]" />
+          </ExpressionBindings>
+        </Item5>
+        <Item6 Ref="20" ControlType="XRLabel" Name="lblNumero" LocationFloat="0,124" SizeF="299,14" TextAlignment="TopLeft">
+          <ExpressionBindings>
+            <Item1 Ref="21" EventName="BeforePrint" PropertyName="Text" Expression="'Documento: ' + [Numero]" />
+          </ExpressionBindings>
+        </Item6>
+        <Item7 Ref="22" ControlType="XRLabel" Name="lblFecha" LocationFloat="0,140" SizeF="299,14" TextAlignment="TopLeft">
+          <ExpressionBindings>
+            <Item1 Ref="23" EventName="BeforePrint" PropertyName="Text" Expression="'Fecha: ' + Format('{0:dd/MM/yyyy HH:mm}', [FechaHoraDoc])" />
+          </ExpressionBindings>
+        </Item7>
+        <Item8 Ref="24" ControlType="XRLabel" Name="lblCliente" LocationFloat="0,156" SizeF="299,14" TextAlignment="TopLeft">
+          <ExpressionBindings>
+            <Item1 Ref="25" EventName="BeforePrint" PropertyName="Text" Expression="'Cliente: ' + [Receptor].[RazonSocial]" />
+          </ExpressionBindings>
+        </Item8>
+        <Item9 Ref="26" ControlType="XRLabel" Name="lblNitCliente" LocationFloat="0,172" SizeF="299,14" TextAlignment="TopLeft">
+          <ExpressionBindings>
+            <Item1 Ref="27" EventName="BeforePrint" PropertyName="Text" Expression="'NIT/CC: ' + [Receptor].[NIT]" />
+          </ExpressionBindings>
+        </Item9>
+        <Item10 Ref="28" ControlType="XRLabel" Name="lblEncabezadoItems" LocationFloat="0,196" SizeF="299,16" Text="Cant.  Referencia  Artículo            Valor" TextAlignment="MiddleLeft" Font="Liberation Sans, 7.5pt, style=Bold" />
+      </Controls>
+    </Item2>
+    <Item3 Ref="61" ControlType="DetailBand" Name="Detail" HeightF="0" Font="Liberation Sans, 7.5pt" />
+    <Item4 Ref="29" ControlType="DetailReportBand" Name="DetailReport" Level="0" DataMember="Items" Font="Liberation Sans, 7.5pt">
+      <Bands>
+        <Item1 Ref="30" ControlType="DetailBand" Name="DetailItems" HeightF="26" Font="Liberation Sans, 7.5pt">
+          <Controls>
+            <Item1 Ref="31" ControlType="XRLabel" Name="lblCantidad" LocationFloat="0,0" SizeF="36,26" TextAlignment="TopLeft">
+              <ExpressionBindings>
+                <Item1 Ref="32" EventName="BeforePrint" PropertyName="Text" Expression="Format('{0:0.##}', [Items].[Cant])" />
+              </ExpressionBindings>
+            </Item1>
+            <Item4 Ref="900" ControlType="XRLabel" Name="lblReferencia" LocationFloat="38,0" SizeF="52,26" Multiline="true" TextAlignment="TopLeft">
+              <ExpressionBindings>
+                <Item1 Ref="901" EventName="BeforePrint" PropertyName="Text" Expression="[Items].[Referencia]" />
+              </ExpressionBindings>
+            </Item4>
+            <Item2 Ref="33" ControlType="XRLabel" Name="lblDetalle" LocationFloat="92,0" SizeF="146,26" Multiline="true" TextAlignment="TopLeft">
+              <ExpressionBindings>
+                <Item1 Ref="34" EventName="BeforePrint" PropertyName="Text" Expression="[Items].[Detalle]" />
+              </ExpressionBindings>
+            </Item2>
+            <Item3 Ref="35" ControlType="XRLabel" Name="lblValor" LocationFloat="240,0" SizeF="59,26" TextAlignment="TopRight">
+              <ExpressionBindings>
+                <Item1 Ref="36" EventName="BeforePrint" PropertyName="Text" Expression="Format('{0:N2}', [Items].[ValorTotal])" />
+              </ExpressionBindings>
+            </Item3>
+          </Controls>
+        </Item1>
+      </Bands>
+    </Item4>
+    <Item5 Ref="37" ControlType="ReportFooterBand" Name="ReportFooter" HeightF="330" Font="Liberation Sans, 7.5pt">
+      <Controls>
+        <Item1 Ref="38" ControlType="XRLabel" Name="lblSubTotal" LocationFloat="0,0" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="39" EventName="BeforePrint" PropertyName="Text" Expression="'Subtotal: ' + Format('{0:N2}', [SubTotal])" />
+          </ExpressionBindings>
+        </Item1>
+        <Item2 Ref="40" ControlType="XRLabel" Name="lblDescuento" LocationFloat="0,14" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="41" EventName="BeforePrint" PropertyName="Text" Expression="Iif([ValorDescuento] == 0, '', 'Descuento: ' + Format('{0:N2}', [ValorDescuento]))" />
+          </ExpressionBindings>
+        </Item2>
+        <Item3 Ref="42" ControlType="XRLabel" Name="lblIva" LocationFloat="0,28" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="43" EventName="BeforePrint" PropertyName="Text" Expression="'IVA: ' + Format('{0:N2}', [IVA])" />
+          </ExpressionBindings>
+        </Item3>
+        <Item4 Ref="44" ControlType="XRLabel" Name="lblReteFuente" LocationFloat="0,42" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="45" EventName="BeforePrint" PropertyName="Text" Expression="Iif([ReteFuente] == 0, '', 'ReteFuente: -' + Format('{0:N2}', [ReteFuente]))" />
+          </ExpressionBindings>
+        </Item4>
+        <Item5 Ref="46" ControlType="XRLabel" Name="lblReteIva" LocationFloat="0,56" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="47" EventName="BeforePrint" PropertyName="Text" Expression="Iif([ReteIVA] == 0, '', 'ReteIVA: -' + Format('{0:N2}', [ReteIVA]))" />
+          </ExpressionBindings>
+        </Item5>
+        <Item6 Ref="48" ControlType="XRLabel" Name="lblReteIca" LocationFloat="0,70" SizeF="299,14" TextAlignment="TopRight">
+          <ExpressionBindings>
+            <Item1 Ref="49" EventName="BeforePrint" PropertyName="Text" Expression="Iif([ReteICA] == 0, '', 'ReteICA: -' + Format('{0:N2}', [ReteICA]))" />
+          </ExpressionBindings>
+        </Item6>
+        <Item7 Ref="50" ControlType="XRLabel" Name="lblTotal" LocationFloat="0,90" SizeF="299,20" TextAlignment="TopRight" Font="Liberation Sans, 10pt, style=Bold">
+          <ExpressionBindings>
+            <Item1 Ref="51" EventName="BeforePrint" PropertyName="Text" Expression="'TOTAL: ' + Format('{0:N2}', [ValorTotal])" />
+          </ExpressionBindings>
+        </Item7>
+        <Item8 Ref="52" ControlType="XRLabel" Name="lblFormaPago" LocationFloat="0,116" SizeF="299,14" TextAlignment="TopLeft">
+          <ExpressionBindings>
+            <Item1 Ref="53" EventName="BeforePrint" PropertyName="Text" Expression="'Forma de pago: ' + [FormaPago].[Nombre]" />
+          </ExpressionBindings>
+        </Item8>
+        <Item9 Ref="54" ControlType="XRLabel" Name="lblCufe" LocationFloat="0,136" SizeF="299,40" Multiline="true" TextAlignment="TopLeft" Font="Liberation Sans, 6pt">
+          <ExpressionBindings>
+            <Item1 Ref="55" EventName="BeforePrint" PropertyName="Text" Expression="'CUDE/CUFE: ' + [CUFE]" />
+          </ExpressionBindings>
+        </Item9>
+        <Item10 Ref="56" ControlType="XRQrCode" Name="qrDian" LocationFloat="100,182" SizeF="100,100">
+          <ExpressionBindings>
+            <Item1 Ref="57" EventName="BeforePrint" PropertyName="Text" Expression="Iif(IsNullOrEmpty([QR]), 'https://catalogo-vpfe' + Iif([Ambiente] == '1', '', '-hab') + '.dian.gov.co/document/searchqr?documentkey=' + [CUFE], [QR])" />
+          </ExpressionBindings>
+        </Item10>
+        <Item11 Ref="58" ControlType="XRLabel" Name="lblLegal" LocationFloat="0,288" SizeF="299,40" Multiline="true" TextAlignment="TopCenter" Font="Liberation Sans, 6.5pt">
+          <ExpressionBindings>
+            <Item1 Ref="59" EventName="BeforePrint" PropertyName="Text" Expression="'Representación gráfica del documento equivalente POS electrónico. Documento validado previamente por la DIAN. Validación: ' + [FechaValidacionDian]" />
+          </ExpressionBindings>
+        </Item11>
+      </Controls>
+    </Item5>
+    <Item6 Ref="60" ControlType="BottomMarginBand" Name="BottomMargin" HeightF="0" Font="Liberation Sans, 7.5pt" />
+  </Bands>
+</XtraReportsLayoutSerializer>

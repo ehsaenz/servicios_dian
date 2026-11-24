@@ -127,33 +127,77 @@ namespace DIAN.Pos.Api.Controllers
 
         /// <summary>
         /// PDF oficial. Solo existe para documentos aprobados por la DIAN: un documento no aprobado responde 409 (el borrador
-        /// con la marca de "no validado" es cosa del ERP, no de este servicio).
+        /// con la marca de "no validado" es cosa del ERP, no de este servicio). También sirve los envíos al set de pruebas
+        /// aceptados (almacén separado), para que el ERP pueda descargarlos durante habilitación.
+        /// Con <c>?cufe=</c>, si el almacén local no tiene el XML y el acuse, se traen de la DIAN por CUFE (ver <see cref="Xml"/>).
         /// </summary>
         [HttpGet("pdf/{numero}")]
-        public IActionResult Pdf(string numero)
+        public IActionResult Pdf(string numero, [FromQuery] string? cufe = null)
         {
             var servicio = _servicios.Documentos(HttpContext.ObtenerTenant());
-            var registro = servicio.Obtener(numero);
+            DocumentoRegistro? registro;
+            try
+            {
+                registro = servicio.ObtenerParaDescarga(numero, cufe);
+            }
+            catch (Exception ex)
+            {
+                return RecuperacionFallida(numero, ex);
+            }
+
             if (registro == null) return NotFound();
             if (registro.Estado != EstadoDocumento.Aprobado) return Conflict("El documento no está aprobado por la DIAN: no hay PDF oficial.");
 
-            var pdf = servicio.Pdf(numero);
-            if (pdf == null) return StatusCode(StatusCodes.Status503ServiceUnavailable, servicio.Obtener(numero)!.PdfMensaje);
+            var pdf = servicio.PdfParaDescarga(numero);
+            if (pdf == null) return StatusCode(StatusCodes.Status503ServiceUnavailable, servicio.ObtenerParaDescarga(numero)!.PdfMensaje);
             return File(pdf, "application/pdf", numero + ".pdf");
         }
 
+        /// <summary>
+        /// XML firmado del documento. Con <c>?cufe=</c> (el CUFE que tiene el ERP en <c>dian_envios.Cufe</c>): si el almacén
+        /// local no tiene el XML aprobado y el acuse, se consulta la DIAN por ese CUFE, se guarda en local y se devuelve.
+        /// Sin CUFE responde solo con lo local (404 si no existe).
+        /// </summary>
         [HttpGet("xml/{numero}")]
-        public IActionResult Xml(string numero)
+        public IActionResult Xml(string numero, [FromQuery] string? cufe = null)
         {
-            var xml = _servicios.Documentos(HttpContext.ObtenerTenant()).XmlFirmado(numero);
+            var servicio = _servicios.Documentos(HttpContext.ObtenerTenant());
+            try
+            {
+                if (servicio.ObtenerParaDescarga(numero, cufe) == null) return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return RecuperacionFallida(numero, ex);
+            }
+
+            var xml = servicio.XmlFirmado(numero);
             return xml == null ? NotFound() : File(xml, "application/xml", numero + ".xml");
         }
 
+        /// <summary>Acuse (ApplicationResponse) de la DIAN. Acepta <c>?cufe=</c> igual que <see cref="Xml"/>.</summary>
         [HttpGet("respuesta-dian/{numero}")]
-        public IActionResult RespuestaDian(string numero)
+        public IActionResult RespuestaDian(string numero, [FromQuery] string? cufe = null)
         {
-            var xml = _servicios.Documentos(HttpContext.ObtenerTenant()).XmlRespuestaDian(numero);
+            var servicio = _servicios.Documentos(HttpContext.ObtenerTenant());
+            try
+            {
+                if (servicio.ObtenerParaDescarga(numero, cufe) == null) return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return RecuperacionFallida(numero, ex);
+            }
+
+            var xml = servicio.XmlRespuestaDian(numero);
             return xml == null ? NotFound() : File(xml, "application/xml", numero + "-respuesta.xml");
+        }
+
+        // La DIAN no devolvió el documento o no lo aprueba (o no respondió): 502, con el motivo para el ERP.
+        private IActionResult RecuperacionFallida(string numero, Exception ex)
+        {
+            _registro.LogError(ex, "No se pudo recuperar el documento {Documento} desde la DIAN por CUFE", numero);
+            return StatusCode(StatusCodes.Status502BadGateway, "No se pudo obtener el documento de la DIAN por CUFE: " + ex.Message);
         }
     }
 }

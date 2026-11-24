@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Pos\Pos.Api\Pos.Api.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Impresion.DevExpress\Impresion.DevExpress.csproj" />
     <ProjectReference Include="..\..\src\Shared\Tenants\Tenants.csproj" />
     <ProjectReference Include="..\..\src\Pos\Pos.Servicios\Pos.Servicios.csproj" />
     <ProjectReference Include="..\..\src\Nomina\Nomina.Servicios\Nomina.Servicios.csproj" />
