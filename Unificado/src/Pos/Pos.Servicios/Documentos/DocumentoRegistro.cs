@@ -34,6 +34,9 @@ namespace DIAN.Pos.Servicios.Documentos
         public List<string> Errores { get; set; } = new List<string>();
         public bool Habilitacion { get; set; }
 
+        /// <summary>ZipKey del último envío al set de pruebas (solo almacén documentos-set). Sirve para consultar el lote sin reenviarlo.</summary>
+        public string ZipKeySet { get; set; } = string.Empty;
+
         /// <summary>Existe el PDF oficial (solo se genera para documentos aprobados).</summary>
         public bool Pdf { get; set; }
 

@@ -44,14 +44,30 @@ namespace DIAN.Pos.Servicios
 
             if (esperaSet > TimeSpan.Zero) Thread.Sleep(esperaSet);
 
-            var dian = enviador.ConsultarDocumentos(subida.ZipKey).FirstOrDefault();
+            return Consultar(enviador, subida.ZipKey, numero, carpetaCliente, nombreArchivoSet, uuid, alRecibirRespuesta);
+        }
+
+        /// <summary>
+        /// Consulta con GetStatusZip un lote ya enviado al set (sin reenviarlo) y guarda el resultado en <c>nombreArchivoSet</c>.
+        /// Lo usa <see cref="Enviar"/> tras la espera y también el reintento de un documento que quedó en proceso.
+        /// </summary>
+        public static ResultadoSet Consultar(
+            IEnviadorDian enviador,
+            string zipKey,
+            string numero,
+            string carpetaCliente,
+            string nombreArchivoSet,
+            string uuid = "",
+            Action<byte[]>? alRecibirRespuesta = null)
+        {
+            var dian = enviador.ConsultarDocumentos(zipKey).FirstOrDefault();
             var mensaje = dian?.StatusDescription ?? dian?.StatusMessage;
             if (dian?.StatusCode == "99" && dian.ErrorMessage != null && dian.ErrorMessage.Length > 0)
             {
                 mensaje = (mensaje ?? string.Empty) + " | " + string.Join(" | ", dian.ErrorMessage);
             }
 
-            var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, subida.ZipKey, numero, uuid);
+            var resultado = ResultadoSet.Desde(dian?.StatusCode, mensaje, zipKey, numero, uuid);
             Guardar(carpetaCliente, nombreArchivoSet, resultado);
             if (dian?.XmlBase64Bytes != null) alRecibirRespuesta?.Invoke(dian.XmlBase64Bytes);
             return resultado;

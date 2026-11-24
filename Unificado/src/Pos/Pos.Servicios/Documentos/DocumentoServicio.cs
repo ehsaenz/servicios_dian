@@ -144,8 +144,14 @@ namespace DIAN.Pos.Servicios.Documentos
             var firmado = FirmarDocumento(doc, out var cufe);
             var enviador = _fabrica.Crear(AmbienteServicio.PRUEBAS, _certificados.Obtener(_tenant));
             byte[]? respuestaDian = null;
-            var resultado = EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente,
-                "set-facturacion.json", EsperaSet, cufe, r => respuestaDian = r);
+            // Si el envío anterior de este número sigue en proceso, el lote ya existe en la DIAN: se consulta ese ZipKey
+            // y NO se reenvía (reenviar crea un lote nuevo que vuelve a quedar en proceso).
+            var previo = _almacenSet.Buscar(doc.Numero);
+            var resultado = previo != null && previo.Estado == EstadoDocumento.Error && !string.IsNullOrEmpty(previo.ZipKeySet)
+                ? EnviadorSetPruebas.Consultar(enviador, previo.ZipKeySet, doc.Numero, _carpetaCliente,
+                    "set-facturacion.json", cufe, r => respuestaDian = r)
+                : EnviadorSetPruebas.Enviar(enviador, firmado, software.TestSetId, doc.Numero, _carpetaCliente,
+                    "set-facturacion.json", EsperaSet, cufe, r => respuestaDian = r);
             GuardarEnSet(doc, cufe, firmado, respuestaDian, resultado);
             return resultado;
         }
@@ -163,6 +169,7 @@ namespace DIAN.Pos.Servicios.Documentos
                 : resultado.Estado == "rechazado" ? EstadoDocumento.Rechazado
                 : EstadoDocumento.Error;
             registro.Mensaje = resultado.Mensaje;
+            registro.ZipKeySet = resultado.ZipKey;
             registro.Errores = new List<string>();
             registro.Habilitacion = true;
             registro.Pdf = false;
